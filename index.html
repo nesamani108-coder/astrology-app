@@ -630,7 +630,7 @@
         { shortTa: "சனி", nameTa: "சனி", nameEn: "Saturn", sid: mod360(trop.Saturn - ayanamsa) },
         { shortTa: "ரா", nameTa: "ராகு", nameEn: "Rahu", sid: mod360(trop.Rahu - ayanamsa) },
         { shortTa: "கே", nameTa: "கேது", nameEn: "Ketu", sid: mod360(trop.Ketu - ayanamsa) },
-        { shortTa: "ம", nameTa: "மாந்தி", nameEn: "Mandhi", sid: mandhiSid }
+        { shortTa: "மா", nameTa: "மாந்தி", nameEn: "Mandhi", sid: mandhiSid }
       ];
       const placements = order.map((item) => ({ shortTa: item.shortTa, nameTa: item.nameTa, nameEn: item.nameEn, ...describeLon(item.sid) }));
       const lagnaIdx = placements[0].rasiIdx, rasiIdx = placements[2].rasiIdx;
