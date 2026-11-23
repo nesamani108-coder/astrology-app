@@ -57,6 +57,8 @@
     ul.saved-list { list-style: none; padding: 0; margin: 0; }
     ul.saved-list li { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 0; border-bottom: 1px solid #eaeef2; font-size: 13px; }
     .err-banner { background: #ffebe9; color: #cf222e; padding: 8px 10px; border-radius: 6px; margin-top: 8px; display: none; font-size: 12px; }
+    .mini-box { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px; padding: 8px 10px; margin-top: 10px; font-size: 12px; }
+    details.opt-box { margin-top: 8px; border: 1px dashed #8c959f; border-radius: 6px; padding: 6px 10px; font-size: 12px; }
     #sheetOverlay { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); z-index: 90; overflow-y: auto; padding: 12px; }
     .jathagam-sheet { max-width: 780px; margin: 0 auto; background: #fff; border: 2px solid #24292f; border-radius: 6px; padding: 16px; color: #111; }
     .sheet-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
@@ -66,7 +68,7 @@
     @media print {
       body > *:not(#sheetOverlay) { display: none !important; }
       #sheetOverlay { position: static; background: none; padding: 0; display: block !important; }
-      .sheet-toolbar { display: none !important; }
+      .sheet-toolbar, details.opt-box summary { display: none !important; }
       .jathagam-sheet { border: 1px solid #000; max-width: 100%; }
     }
   </style>
@@ -89,6 +91,12 @@
       <h3>பிறப்பு விவரம் (Birth Details)</h3>
       <div class="grid-form">
         <label>பெயர் (Name) <input id="nameInput" type="text" placeholder="e.g. N" /></label>
+        <label>பாலினம் (Gender)
+          <select id="genderSelect">
+            <option value="ஆண்">ஆண் (Male)</option>
+            <option value="பெண்">பெண் (Female)</option>
+          </select>
+        </label>
         <label>பிறந்த தேதி <input id="dateInput" type="date" value="1976-09-27" /></label>
         <label>நேரம் (IST) <input id="timeInput" type="time" step="1" value="03:35:00" /></label>
         <label style="grid-column: span 2;">பிறந்த ஊர் தேடல் (Online Search)
@@ -121,6 +129,8 @@
         </div>
       </div>
       <div id="degreeTableWrap" class="table-wrap"></div>
+      <div id="jaiminiBox" class="mini-box"></div>
+      <div id="tharabalaTableWrap" class="table-wrap"></div>
     </div>
   </section>
 
@@ -191,7 +201,7 @@
   </div>
 
   <script>
-    const STORAGE_KEY = "tamil_astro_joined_v9_profiles";
+    const STORAGE_KEY = "tamil_astro_joined_v10_profiles";
     const DEG2RAD = Math.PI / 180;
     const RAD2DEG = 180 / Math.PI;
     const MS_PER_DAY = 86400000;
@@ -208,6 +218,18 @@
     const GRAHA_TA = ["சூரியன்", "சந்திரன்", "செவ்வாய்", "புதன்", "குரு", "சுக்கிரன்", "சனி", "ராகு", "கேது"];
     const TITHI_TA = ["பிரதமை", "துவிதியை", "திருதியை", "சதுர்த்தி", "பஞ்சமி", "சஷ்டி", "சப்தமி", "அஷ்டமி", "நவமி", "தசமி", "ஏகாதசி", "த்வாதசி", "திரயோதசி", "சதுர்தசி", "பௌர்ணமி / அமாவாசை"];
     const KARANAM_TA = ["பவம்", "பாலவம்", "கௌலவம்", "தைதுலம்", "கரசை", "வணிசை", "பத்ரை", "சகுனி", "சதுஷ்பாதம்", "நாகவம்", "கிம்ஸ்துக்னம்"];
+    const KARAKA_TA = ["ஆத்மகாரகன்", "அமாத்திய காரகன்", "பத்திரி காரகன்", "மாத்ரு காரகன்", "புத்ர காரகன்", "ஜனத்தி காரகன்", "தார காரகன்"];
+    const TARA_INFO = [
+      { name: "ஜென்ம தாரை", tip: "நன்மை, தீமை கலந்து வரும்" },
+      { name: "சம்பத்து தாரை", tip: "பணம் மற்றும் மதிப்பு உயரும்" },
+      { name: "விபத்து தாரை", tip: "பயணங்களை தவிர்க்கவும்" },
+      { name: "க்ஷேம தாரை", tip: "சுகங்களை தரும்" },
+      { name: "பிரதிக்கு தாரை", tip: "கடன், கஷ்டம், நஷ்டம் தரும்" },
+      { name: "சாதக தாரை", tip: "புதிய முயற்சி வெற்றி தரும்" },
+      { name: "வதை தாரை", tip: "நல்ல காரியங்கள் தவிர்க்கவும்" },
+      { name: "மைத்ர தாரை", tip: "புதிய முயற்சி, இடம் வாங்க ஏற்ற நாள்" },
+      { name: "அதி மைத்ர தாரை", tip: "சுப நிகழ்ச்சி, வாகனம் வாங்க ஏற்ற நாள்" }
+    ];
 
     const NAKSHATRA_TA = [
       "அசுவினி", "பரணி", "கார்த்திகை", "ரோகிணி", "மிருகசீரிடம்", "திருவாதிரை", "புனர்பூசம்", "பூசம்", "ஆயில்யம்",
@@ -334,7 +356,7 @@
       const lon = mod360(sidLon), nakSpan = 360 / 27;
       return { lon, rasiIdx: Math.min(11, Math.max(0, Math.floor(lon / 30))), nakIdx: Math.min(26, Math.max(0, Math.floor(lon / nakSpan))), pada: Math.min(4, Math.max(1, Math.floor((lon % nakSpan) / (nakSpan / 4)) + 1)), degInRasi: lon % 30, navRasiIdx: computeNavamsaRasiIdx(lon) };
     }
-    function getPanchangInfo(sunSidLon, moonSidLon) {
+    function getPanchangInfo(sunSidLon, moonSidLon, lagnaIdx, rasiIdx) {
       const diff = mod360(moonSidLon - sunSidLon);
       const tithiNum = Math.floor(diff / 12) + 1;
       const paksha = tithiNum <= 15 ? "சுக்ல பட்சம்" : "கிருஷ்ண பட்சம்";
@@ -342,13 +364,26 @@
       const yogamIdx = Math.floor(mod360(sunSidLon + moonSidLon) / (360 / 27));
       const karanamHalf = Math.floor(diff / 6);
       const karanamIdx = karanamHalf === 0 ? 10 : karanamHalf >= 57 ? Math.min(9, karanamHalf - 54) : (karanamHalf - 1) % 7;
+      const ayanam = (sunSidLon >= 270 || sunSidLon < 90) ? "உத்தராயணம்" : "தட்சிணாயணம்";
+      const indhuLagnaIdx = (lagnaIdx + rasiIdx) % 12;
       return {
-        tithiStr: `${paksha} - ${TITHI_TA[tithiIdx]}`,
+        paksha,
+        tithiStr: `${TITHI_TA[tithiIdx]} (${paksha})`,
         yogamStr: NAKSHATRA_TA[yogamIdx],
-        karanamStr: KARANAM_TA[karanamIdx]
+        karanamStr: KARANAM_TA[karanamIdx],
+        ayanam,
+        indhuLagnaTa: RASI_TA[indhuLagnaIdx]
       };
     }
-    function computeAstroData({ name, dateStr, timeStr, lat, lon, placeName }) {
+    function computeJaiminiKarakas(placements) {
+      const sevenNames = new Set(["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]);
+      return placements
+        .filter((p) => sevenNames.has(p.nameEn))
+        .slice()
+        .sort((a, b) => b.degInRasi - a.degInRasi)
+        .map((p, idx) => ({ karakaTa: KARAKA_TA[idx], grahaTa: p.nameTa, degStr: p.degInRasi.toFixed(2) }));
+    }
+    function computeAstroData({ name, gender, dateStr, timeStr, lat, lon, placeName }) {
       const [year, month, day] = dateStr.split("-").map(Number);
       const parts = (timeStr || "03:35:00").split(":").map(Number);
       const jd = toJulianDay(year, month, day, ((parts[0] || 0) + (parts[1] || 0) / 60 + (parts[2] || 0) / 3600) - 5.5);
@@ -368,13 +403,16 @@
         { shortTa: "கே", nameTa: "கேது", nameEn: "Ketu", sid: mod360(trop.Ketu - ayanamsa) }
       ];
       const placements = order.map((item) => ({ shortTa: item.shortTa, nameTa: item.nameTa, nameEn: item.nameEn, ...describeLon(item.sid) }));
+      const lagnaIdx = placements[0].rasiIdx;
+      const rasiIdx = placements[2].rasiIdx;
       return {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        name: name || "Unnamed", placeName, dateStr, timeStr, lat, lon, jd,
+        name: name || "Unnamed", gender: gender || "ஆண்", placeName, dateStr, timeStr, lat, lon, jd,
         ayanamsa: Number(ayanamsa.toFixed(4)), sunriseStr: sun.sunriseStr, sunsetStr: sun.sunsetStr,
         sunriseMs: sun.sunriseDate ? sun.sunriseDate.getTime() : null, sunsetMs: sun.sunsetDate ? sun.sunsetDate.getTime() : null,
-        panchang: getPanchangInfo(sunSid, moonSid),
-        lagnaIdx: placements[0].rasiIdx, rasiIdx: placements[2].rasiIdx, nakIdx: placements[2].nakIdx, pada: placements[2].pada,
+        panchang: getPanchangInfo(sunSid, moonSid, lagnaIdx, rasiIdx),
+        karakas: computeJaiminiKarakas(placements),
+        lagnaIdx, rasiIdx, nakIdx: placements[2].nakIdx, pada: placements[2].pada,
         moonDegInNak: placements[2].lon % (360 / 27), placements
       };
     }
@@ -386,17 +424,30 @@
       });
       return `<div class="si-grid">${cells.join("")}</div>`;
     }
+    function buildTharabalaHtml(birthNakIdx) {
+      const rows = TARA_INFO.map((t, idx) => {
+        const starIdx = (birthNakIdx + idx) % 27;
+        return `<tr><td><strong>${t.name}</strong></td><td>${NAKSHATRA_TA[starIdx]}</td><td>${t.tip}</td></tr>`;
+      }).join("");
+      return `<div style="font-size:12px;font-weight:700;color:#0969da;">தாரபல அட்டவணை (9 Taras from ${NAKSHATRA_TA[birthNakIdx]})</div><table class="data-table"><thead><tr><th>தாரை வகை</th><th>நட்சத்திரம்</th><th>குறிப்பு</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
     function renderChartTab(record) {
       latestRecord = record;
+      const pan = record.panchang || getPanchangInfo(record.placements[1].lon, record.placements[2].lon, record.lagnaIdx, record.rasiIdx);
+      const karakas = record.karakas || computeJaiminiKarakas(record.placements);
       document.getElementById("summaryBox").innerHTML =
-        `<strong>${record.name}</strong> (${record.placeName}) — சூரிய உதயம்: <strong>${record.sunriseStr}</strong> | அஸ்தமனம்: <strong>${record.sunsetStr}</strong><br/>` +
-        `லக்னம்: <strong>${RASI_TA[record.lagnaIdx]}</strong> | ராசி: <strong>${RASI_TA[record.rasiIdx]}</strong> | நட்சத்திரம்: <strong>${NAKSHATRA_TA[record.nakIdx]}</strong> (${record.pada}ம் பாதம்)`;
+        `<strong>${record.name}</strong> (${record.gender || "ஆண்"} • ${record.placeName}) — உதயம்: <strong>${record.sunriseStr}</strong> | அஸ்தமனம்: <strong>${record.sunsetStr}</strong><br/>` +
+        `லக்னம்: <strong>${RASI_TA[record.lagnaIdx]}</strong> | ராசி: <strong>${RASI_TA[record.rasiIdx]}</strong> | நட்சத்திரம்: <strong>${NAKSHATRA_TA[record.nakIdx]}</strong> (${record.pada}ம் பாதம்)<br/>` +
+        `திதி: <strong>${pan.tithiStr}</strong> | யோகம்: <strong>${pan.yogamStr}</strong> | கரணம்: <strong>${pan.karanamStr}</strong> | அயனம்: <strong>${pan.ayanam}</strong> | இந்து லக்னம்: <strong>${pan.indhuLagnaTa}</strong>`;
       document.getElementById("rasiChart").outerHTML = `<div id="rasiChart">${buildSouthIndianGridHtml("ராசி கட்டம்", `${record.dateStr}<br/>${record.timeStr}`, record.placements, "rasiIdx")}</div>`;
       document.getElementById("navamsaChart").outerHTML = `<div id="navamsaChart">${buildSouthIndianGridHtml("நவாம்சம்", `Ayanamsa: ${record.ayanamsa}°`, record.placements, "navRasiIdx")}</div>`;
       document.getElementById("degreeTableWrap").innerHTML =
         `<table class="data-table"><thead><tr><th>கிரகம்</th><th>பாகை</th><th>ராசி</th><th>நட்சத்திரம்</th><th>பாதம்</th><th>நவாம்சம்</th></tr></thead><tbody>${
           record.placements.map((p) => `<tr><td>${p.nameTa} (${p.shortTa})</td><td>${p.lon.toFixed(2)}°</td><td>${RASI_TA[p.rasiIdx]} (${p.degInRasi.toFixed(1)}°)</td><td>${NAKSHATRA_TA[p.nakIdx]}</td><td>${p.pada}</td><td>${RASI_TA[p.navRasiIdx]}</td></tr>`).join("")
         }</tbody></table>`;
+      document.getElementById("jaiminiBox").innerHTML =
+        `<strong>ஜெய்மினி காரகர்கள்:</strong> ` + karakas.map((k) => `${k.karakaTa}: <strong>${k.grahaTa}</strong> (${k.degStr}°)`).join(" • ");
+      document.getElementById("tharabalaTableWrap").innerHTML = buildTharabalaHtml(record.nakIdx);
     }
     function getDashaBalanceInfo(record) {
       const remRatio = 1 - Math.min(0.9999, Math.max(0, record.moonDegInNak / (360 / 27)));
@@ -409,7 +460,8 @@
       const istDay = new Date(jdToIstDate(record.jd).getTime() + 5.5 * 3600 * 1000);
       const tamilDays = ["ஞாயிறு கிழமை", "திங்கள் கிழமை", "செவ்வாய் கிழமை", "புதன் கிழமை", "வியாழன் கிழமை", "வெள்ளி கிழமை", "சனி கிழமை"];
       const dashaBal = getDashaBalanceInfo(record);
-      const p = record.panchang || getPanchangInfo(record.placements[1].lon, record.placements[2].lon);
+      const pan = record.panchang || getPanchangInfo(record.placements[1].lon, record.placements[2].lon, record.lagnaIdx, record.rasiIdx);
+      const karakas = record.karakas || computeJaiminiKarakas(record.placements);
       const grahaRows = record.placements.map((pl) =>
         `<tr><td>${pl.nameTa}</td><td>${formatDegInRasiDMS(pl.degInRasi)}</td><td>${NAKSHATRA_TA[pl.nakIdx]}</td><td>${pl.pada}</td><td>${NAK_LORD_TA[pl.nakIdx]}</td><td>${pl.lon.toFixed(2)}°</td><td>${RASI_TA[pl.rasiIdx]}</td><td>${RASI_LORD_TA[pl.rasiIdx]}</td></tr>`
       ).join("");
@@ -417,18 +469,21 @@
       document.getElementById("sheetContent").innerHTML = `
         <div class="sheet-head"><div style="font-size:17px;font-weight:700;">ஜாதக கணிதம்</div><div style="font-size:11px;color:#57606a;">Srirangam-Style Jathagam Sheet • Lahiri Ayanamsa: ${record.ayanamsa}°</div></div>
         <div class="sheet-meta-grid">
-          <div><strong>பெயர்:</strong> ${record.name}</div><div><strong>பிறந்த தேதி:</strong> ${record.dateStr}</div>
-          <div><strong>பிறந்த நேரம்:</strong> ${record.timeStr} IST</div><div><strong>பிறந்த கிழமை:</strong> ${tamilDays[istDay.getUTCDay()]}</div>
-          <div><strong>பிறந்த ஊர்:</strong> ${record.placeName} (${record.lat.toFixed(2)}°N, ${record.lon.toFixed(2)}°E)</div><div><strong>ஜென்ம லக்கினம்:</strong> ${RASI_TA[record.lagnaIdx]}</div>
-          <div><strong>ஜென்ம இராசி:</strong> ${RASI_TA[record.rasiIdx]}</div><div><strong>ஜென்ம நட்சத்திரம்:</strong> ${NAKSHATRA_TA[record.nakIdx]} - ${record.pada} ஆம் பாதம்</div>
-          <div><strong>திதி:</strong> ${p.tithiStr}</div><div><strong>யோகம் / கரணம்:</strong> ${p.yogamStr} / ${p.karanamStr}</div>
-          <div><strong>சூரிய உதயம்:</strong> ${record.sunriseStr}</div><div><strong>சூரிய அஸ்தமனம்:</strong> ${record.sunsetStr}</div>
+          <div><strong>பெயர்:</strong> ${record.name}</div><div><strong>பாலினம்:</strong> ${record.gender || "ஆண்"}</div>
+          <div><strong>பிறந்த தேதி:</strong> ${record.dateStr}</div><div><strong>பிறந்த நேரம்:</strong> ${record.timeStr} IST</div>
+          <div><strong>பிறந்த கிழமை:</strong> ${tamilDays[istDay.getUTCDay()]}</div><div><strong>பிறந்த ஊர்:</strong> ${record.placeName} (${record.lat.toFixed(2)}°N, ${record.lon.toFixed(2)}°E)</div>
+          <div><strong>ஜென்ம லக்கினம்:</strong> ${RASI_TA[record.lagnaIdx]}</div><div><strong>ஜென்ம இராசி:</strong> ${RASI_TA[record.rasiIdx]}</div>
+          <div><strong>ஜென்ம நட்சத்திரம்:</strong> ${NAKSHATRA_TA[record.nakIdx]} - ${record.pada} ஆம் பாதம்</div><div><strong>இந்து லக்னம்:</strong> ${pan.indhuLagnaTa}</div>
+          <div><strong>திதி / பட்சம்:</strong> ${pan.tithiStr}</div><div><strong>யோகம் / கரணம்:</strong> ${pan.yogamStr} / ${pan.karanamStr}</div>
+          <div><strong>அயனம்:</strong> ${pan.ayanam}</div><div><strong>உதயம் / அஸ்தமனம்:</strong> ${record.sunriseStr} / ${record.sunsetStr}</div>
         </div>
         <div class="charts-two-col" style="margin-top:8px;">
           <div><div style="font-size:12px;font-weight:700;margin-bottom:4px;">இராசி கட்டம்</div>${buildSouthIndianGridHtml("இராசி", `${record.name}<br/>${record.dateStr}`, record.placements, "rasiIdx")}</div>
           <div><div style="font-size:12px;font-weight:700;margin-bottom:4px;">நவாம்ச கட்டம்</div>${buildSouthIndianGridHtml("நவாம்சம்", `${record.timeStr} IST`, record.placements, "navRasiIdx")}</div>
         </div>
         <div class="table-wrap"><table class="data-table"><thead><tr><th>கிரகம்</th><th>பா-கலை</th><th>நட்சத்திரம்</th><th>பாதம்</th><th>சாரம்</th><th>நிராயண</th><th>ராசி</th><th>ராசி அதிபதி</th></tr></thead><tbody>${grahaRows}</tbody></table></div>
+        <div class="mini-box"><strong>ஜெய்மினி காரகர்கள்:</strong> ${karakas.map((k) => `${k.karakaTa}: <strong>${k.grahaTa}</strong> (${k.degStr}°)`).join(" • ")}</div>
+        <details class="opt-box"><summary><strong>தாரபல அட்டவணை (Optional Print Section)</strong></summary><div class="table-wrap">${buildTharabalaHtml(record.nakIdx)}</div></details>
         <div class="sheet-footer"><strong>பிறந்த கால திசை இருப்பு (ஜனன கால தசாசேஷம்):</strong> ${dashaBal.lordTa} திசை: ${dashaBal.y} ஆண்டு, ${dashaBal.m} மாதம், ${dashaBal.d} நாள்</div>
       `;
       document.getElementById("sheetOverlay").style.display = "block";
@@ -501,9 +556,8 @@
       const rows = [];
       for (let i = 0; i < 9; i++) {
         const sub = DASHA_SEQUENCE[(mahaSeqPos + i) % 9];
-        const share = sub.years / 120;
         const subStart = cursor;
-        const subEnd = i === 8 ? target.endMs : subStart + totalMs * share;
+        const subEnd = i === 8 ? target.endMs : subStart + totalMs * (sub.years / 120);
         const isLive = nowMs >= subStart && nowMs < subEnd;
         const days = Math.max(1, Math.round((subEnd - subStart) / MS_PER_DAY));
         rows.push(`<tr class="${isLive ? "active-period" : ""}"><td><strong>${GRAHA_TA[target.lordIdx]} / ${GRAHA_TA[sub.lordIdx]}</strong>${isLive ? '<span class="badge-live">இப்போது</span>' : ""}</td><td>${days} நாள்</td><td>${formatDateDDMMYYYY(new Date(subStart))}</td><td>${formatDateDDMMYYYY(new Date(subEnd))}</td></tr>`);
@@ -553,7 +607,7 @@
       ul.innerHTML = !list.length ? "<li>சேமித்த ஜாதகங்கள் இல்லை.</li>" : "";
       list.forEach((item) => {
         const li = document.createElement("li");
-        li.innerHTML = `<span><strong>${item.name}</strong> — ${item.dateStr} ${item.timeStr} (${item.placeName} • ${RASI_TA[item.rasiIdx] || ""} / ${NAKSHATRA_TA[item.nakIdx] || ""})</span>`;
+        li.innerHTML = `<span><strong>${item.name}</strong> (${item.gender || "ஆண்"}) — ${item.dateStr} ${item.timeStr} (${item.placeName} • ${RASI_TA[item.rasiIdx] || ""} / ${NAKSHATRA_TA[item.nakIdx] || ""})</span>`;
         const actions = document.createElement("span");
         const openBtn = document.createElement("button"); openBtn.textContent = "ஜாதகம்"; openBtn.className = "small"; openBtn.onclick = () => { renderChartTab(item); switchTab("tab-chart"); };
         const pdfBtn = document.createElement("button"); pdfBtn.textContent = "PDF"; pdfBtn.className = "success small"; pdfBtn.style.marginLeft = "6px"; pdfBtn.onclick = () => openSrirangamSheet(item);
@@ -569,7 +623,14 @@
       try {
         const latVal = parseFloat(document.getElementById("latInput").value), lonVal = parseFloat(document.getElementById("lonInput").value);
         if (Number.isNaN(latVal) || Number.isNaN(lonVal)) throw new Error("Enter valid Latitude and Longitude.");
-        const record = computeAstroData({ name: document.getElementById("nameInput").value.trim(), dateStr: document.getElementById("dateInput").value, timeStr: document.getElementById("timeInput").value || "03:35:00", lat: latVal, lon: lonVal, placeName: document.getElementById("townSearchInput").value.trim() || "Custom Place" });
+        const record = computeAstroData({
+          name: document.getElementById("nameInput").value.trim(),
+          gender: document.getElementById("genderSelect").value,
+          dateStr: document.getElementById("dateInput").value,
+          timeStr: document.getElementById("timeInput").value || "03:35:00",
+          lat: latVal, lon: lonVal,
+          placeName: document.getElementById("townSearchInput").value.trim() || "Custom Place"
+        });
         renderChartTab(record);
         if (shouldSave) saveProfiles([record, ...loadProfiles()]);
       } catch (err) {
