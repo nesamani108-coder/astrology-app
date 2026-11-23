@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tamil Astrology App (5 Tabs • Mandhi • Panchangam • Antardasha • PDF)</title>
+  <title>Tamil Astrology App (5 Tabs • Mandhi • Panchangam • Balangal • PDF)</title>
   <style>
     * { box-sizing: border-box; }
     body { font-family: system-ui, -apple-system, sans-serif; margin: 10px; background: #f3f5f8; color: #1b1f24; }
@@ -77,7 +77,7 @@
 <body>
   <div class="app-header">
     <h1 class="app-title">தமிழ் ஜாதக &amp; பஞ்சாங்க செயலி</h1>
-    <span style="font-size:12px;color:#57606a;">5 Tabs • Mandhi • Antardasha • PDF</span>
+    <span style="font-size:12px;color:#57606a;">5 Tabs • Mandhi • Balangal • PDF</span>
   </div>
 
   <div class="tab-bar" role="tablist">
@@ -170,11 +170,12 @@
     </div>
   </section>
 
-  <!-- TAB 3: DASHA / BHUKTI / ANTARDASHA / KAALAM -->
+  <!-- TAB 3: DASHA / BHUKTI / ANTARDASHA / BALANGAL / KAALAM -->
   <section id="tab-dasha" class="tab-panel">
     <div class="card">
       <h3>விம்சோத்தரி தசா, புத்தி &amp; அந்தர்தசா (Vimshottari Dasha, Bhukti &amp; Antardasha)</h3>
       <div id="dashaSummary">Calculate a chart in Tab 2 first.</div>
+      <div id="dashaBalangalBox" class="mini-box" style="display:none;"></div>
       <div class="row-actions" style="margin-top:8px;">
         <label style="min-width:220px;flex-direction:row;align-items:center;gap:8px;">
           <span>புத்தி பார்க்க (Bhukti):</span>
@@ -186,7 +187,7 @@
       <div id="antardashaTableWrap" class="table-wrap"></div>
     </div>
     <div class="card">
-      <h3>ராகு காலம் / எமகண்டம் / குளிகை</h3>
+      <h3>ராகு காலம் / எமகண்டம் / குளிகை (உதயம் முதல் அஸ்தமனம் வரை)</h3>
       <div id="kaalamSummary">Select a date and place in Tab 2.</div>
       <div id="kaalamTableWrap" class="table-wrap"></div>
     </div>
@@ -241,7 +242,7 @@
   </div>
 
   <script>
-    const STORAGE_KEY = "tamil_astro_5tab_v16_profiles";
+    const STORAGE_KEY = "tamil_astro_5tab_v17_profiles";
     const DEG2RAD = Math.PI / 180;
     const RAD2DEG = 180 / Math.PI;
     const MS_PER_DAY = 86400000;
@@ -353,6 +354,12 @@
 
     function getHouseFromLagna(rasiIdx, lagnaIdx) {
       return ((rasiIdx - lagnaIdx + 12) % 12) + 1;
+    }
+
+    function getLordKeyForHouse(lagnaIdx, houseNum) {
+      const targetRasi = (lagnaIdx + houseNum - 1) % 12;
+      const lordIdx = RASI_LORD_IDX[targetRasi];
+      return SEVEN_GRAHA_KEYS[lordIdx] || "Sun";
     }
 
     function toJulianDay(year, month, day, hourUT) {
@@ -740,7 +747,7 @@
       const byEngName = Object.fromEntries(grahasOnly.map((p) => [p.nameEn, p]));
       const rows = grahasOnly.map((p) => {
         const pHouse = getHouseFromLagna(p.rasiIdx, record.lagnaIdx);
-        const lordEng = SEVEN_GRAHA_KEYS[RASI_LORD_IDX[p.rasiIdx]];
+        const lordEng = getLordKeyForHouse(record.lagnaIdx, pHouse);
         const lordPlacement = byEngName[lordEng];
         const lordHouse = lordPlacement ? getHouseFromLagna(lordPlacement.rasiIdx, record.lagnaIdx) : 1;
         return `<div><strong>${RASI_TA[p.rasiIdx]} ${p.shortTa} நிற்க ${pHouse}ம் அதிபதி ${lordHouse}ம் இல்.</strong><br/>${pHouse}ம் பாவகம் :- (${BHAVA_MEANINGS_TA[pHouse - 1]})<br/>${lordHouse}ம் பாவகம் :- (${BHAVA_MEANINGS_TA[lordHouse - 1]})</div>`;
@@ -774,8 +781,59 @@
     function getDashaBalanceInfo(record) {
       const remRatio = 1 - Math.min(0.9999, Math.max(0, record.moonDegInNak / (360 / 27)));
       const firstDasha = DASHA_SEQUENCE[NAK_DASHA_IDX[record.nakIdx]];
-      const balDaysTotal = Math.round(firstDasha.years * remRatio * DAYS_PER_YEAR);
-      return { lordTa: GRAHA_TA[firstDasha.lordIdx], y: Math.floor(balDaysTotal / 365), m: Math.floor((balDaysTotal % 365) / 30), d: (balDaysTotal % 365) % 30 };
+      const balDaysExact = firstDasha.years * remRatio * DAYS_PER_YEAR;
+      const y = Math.floor(balDaysExact / DAYS_PER_YEAR);
+      const remAfterYears = balDaysExact - y * DAYS_PER_YEAR;
+      const m = Math.floor(remAfterYears / 30);
+      const d = Math.max(0, Math.round(remAfterYears - m * 30));
+      return { lordTa: GRAHA_TA[firstDasha.lordIdx], y, m, d };
+    }
+    function findActiveSubPeriod(parentStartMs, parentEndMs, startLordIdx, nowMs) {
+      const totalMs = parentEndMs - parentStartMs;
+      const seqPos = Math.max(0, DASHA_SEQUENCE.findIndex((d) => d.lordIdx === startLordIdx));
+      let cursor = parentStartMs;
+      for (let i = 0; i < 9; i++) {
+        const sub = DASHA_SEQUENCE[(seqPos + i) % 9];
+        const sMs = cursor;
+        const eMs = i === 8 ? parentEndMs : sMs + totalMs * (sub.years / 120);
+        if (nowMs >= sMs && nowMs < eMs) {
+          return { lordIdx: sub.lordIdx, startMs: sMs, endMs: eMs };
+        }
+        cursor = eMs;
+      }
+      return { lordIdx: DASHA_SEQUENCE[seqPos].lordIdx, startMs: parentStartMs, endMs: parentStartMs + totalMs * (DASHA_SEQUENCE[seqPos].years / 120) };
+    }
+    function buildDashaBalangalHtml(record, mahaPeriod, nowMs) {
+      const grahasOnly = (record.placements || []).filter((p) => p.nameEn !== "Lagna" && p.nameEn !== "Mandhi");
+      const byEng = Object.fromEntries(grahasOnly.map((p) => [p.nameEn, p]));
+      const describeGrahaPos = (lordIdx) => {
+        const engKey = GRAHA_TA[lordIdx] === "ராகு" ? "Rahu" : GRAHA_TA[lordIdx] === "கேது" ? "Ketu" : SEVEN_GRAHA_KEYS.find((k, idx) => GRAHA_TA[idx] === GRAHA_TA[lordIdx]);
+        const pl = engKey ? byEng[engKey] : null;
+        if (!pl) return `${GRAHA_TA[lordIdx]}`;
+        const hLagna = getHouseFromLagna(pl.rasiIdx, record.lagnaIdx);
+        const hRasi = getHouseFromLagna(pl.rasiIdx, record.rasiIdx);
+        return `<strong>${pl.nameTa}</strong> (${RASI_TA[pl.rasiIdx]} • லக்னத்திற்கு ${hLagna}ம், ராசிக்கு ${hRasi}ம்)`;
+      };
+
+      const activeBhukti = findActiveSubPeriod(mahaPeriod.startMs, mahaPeriod.endMs, mahaPeriod.lordIdx, nowMs);
+      const activeAntara = findActiveSubPeriod(activeBhukti.startMs, activeBhukti.endMs, activeBhukti.lordIdx, nowMs);
+
+      const h10Lord = byEng[getLordKeyForHouse(record.lagnaIdx, 10)];
+      const h10House = h10Lord ? getHouseFromLagna(h10Lord.rasiIdx, record.lagnaIdx) : 10;
+      const h7Lord = byEng[getLordKeyForHouse(record.lagnaIdx, 7)];
+      const h7House = h7Lord ? getHouseFromLagna(h7Lord.rasiIdx, record.lagnaIdx) : 7;
+
+      const activeDoshaList = (record.doshas || []).filter((d) => d.status === "உண்டு").map((d) => d.name);
+      const reliefDoshaList = (record.doshas || []).filter((d) => d.status !== "இல்லை" && d.status !== "உண்டு").map((d) => `${d.name} (${d.status})`);
+
+      return `
+        <strong>தசா / புத்தி / அந்தர பலன்கள் (Dasha, Bhukti &amp; Antardasha Notes):</strong><br/>
+        • <strong>தசா நாதன்:</strong> ${describeGrahaPos(mahaPeriod.lordIdx)} (${formatDateDDMMYYYY(new Date(mahaPeriod.startMs))} – ${formatDateDDMMYYYY(new Date(mahaPeriod.endMs))})<br/>
+        • <strong>புத்தி நாதன்:</strong> ${describeGrahaPos(activeBhukti.lordIdx)} (${formatDateDDMMYYYY(new Date(activeBhukti.startMs))} – ${formatDateDDMMYYYY(new Date(activeBhukti.endMs))})<br/>
+        • <strong>அந்தர நாதன்:</strong> ${describeGrahaPos(activeAntara.lordIdx)} (${formatDateDDMMYYYY(new Date(activeAntara.startMs))} – ${formatDateDDMMYYYY(new Date(activeAntara.endMs))})<br/>
+        • <strong>தொழில் &amp; உறவு பார்வை:</strong> 10ம் அதிபதி ${h10Lord ? `<strong>${h10Lord.nameTa}</strong> (${h10House}ம் பாவகம்: ${BHAVA_MEANINGS_TA[h10House - 1]})` : "-"} • 7ம் அதிபதி ${h7Lord ? `<strong>${h7Lord.nameTa}</strong> (${h7House}ம் பாவகம்: ${BHAVA_MEANINGS_TA[h7House - 1]})` : "-"}<br/>
+        • <strong>தோஷ குறிப்பு:</strong> ${activeDoshaList.length ? `கவனிக்க வேண்டியவை: <strong>${activeDoshaList.join(", ")}</strong>` : "முக்கிய தோஷ பாதிப்புகள் இல்லை"}${reliefDoshaList.length ? ` • நிவர்த்தி/கவனம்: ${reliefDoshaList.join(", ")}` : ""}
+      `;
     }
     function openSrirangamSheet(record) {
       if (!record) return;
@@ -870,7 +928,7 @@
       const bhukti = lastBhuktiList[bhuktiIdx];
       const wrap = document.getElementById("antardashaTableWrap");
       if (!bhukti) { wrap.innerHTML = ""; return; }
-      const nowMs = Date.now(), totalMs = bhukti.endMs - bhukti.startMs, subSeqPos = DASHA_SEQUENCE.findIndex((d) => d.lordIdx === bhukti.subLordIdx);
+      const nowMs = Date.now(), totalMs = bhukti.endMs - bhukti.startMs, subSeqPos = Math.max(0, DASHA_SEQUENCE.findIndex((d) => d.lordIdx === bhukti.subLordIdx));
       let cursor = bhukti.startMs;
       const rows = [];
       for (let i = 0; i < 9; i++) {
@@ -887,7 +945,7 @@
       const target = lastDashaPeriods[dashaIdx];
       const wrap = document.getElementById("bhuktiTableWrap");
       if (!target) { wrap.innerHTML = ""; document.getElementById("antardashaTableWrap").innerHTML = ""; return; }
-      const nowMs = Date.now(), totalMs = target.endMs - target.startMs, mahaSeqPos = DASHA_SEQUENCE.findIndex((d) => d.lordIdx === target.lordIdx);
+      const nowMs = Date.now(), totalMs = target.endMs - target.startMs, mahaSeqPos = Math.max(0, DASHA_SEQUENCE.findIndex((d) => d.lordIdx === target.lordIdx));
       let cursor = target.startMs;
       lastBhuktiList = [];
       let defaultBhuktiIdx = 0;
@@ -908,14 +966,24 @@
       renderAntardashaTable(bhuktiIdx);
     }
     function renderDashaAndKaalam(record) {
-      if (!record) return;
-      const remRatio = 1 - Math.min(0.9999, Math.max(0, record.moonDegInNak / (360 / 27))), startSeqIdx = NAK_DASHA_IDX[record.nakIdx], bal = getDashaBalanceInfo(record), nowMs = Date.now();
+      const balBox = document.getElementById("dashaBalangalBox");
+      if (!record) {
+        if (balBox) { balBox.style.display = "none"; balBox.innerHTML = ""; }
+        return;
+      }
+      const remRatio = 1 - Math.min(0.9999, Math.max(0, record.moonDegInNak / (360 / 27)));
+      const startSeqIdx = NAK_DASHA_IDX[record.nakIdx];
+      const bal = getDashaBalanceInfo(record);
+      const nowMs = Date.now();
       let cursorMs = jdToIstDate(record.jd).getTime();
       lastDashaPeriods = [];
       let liveMahaIdx = 0;
       const dashaRows = [];
       for (let i = 0; i < 9; i++) {
-        const entry = DASHA_SEQUENCE[(startSeqIdx + i) % 9], startMs = cursorMs, endMs = startMs + (i === 0 ? entry.years * remRatio : entry.years) * DAYS_PER_YEAR * MS_PER_DAY, isLive = nowMs >= startMs && nowMs < endMs;
+        const entry = DASHA_SEQUENCE[(startSeqIdx + i) % 9];
+        const startMs = cursorMs;
+        const endMs = startMs + (i === 0 ? entry.years * remRatio : entry.years) * DAYS_PER_YEAR * MS_PER_DAY;
+        const isLive = nowMs >= startMs && nowMs < endMs;
         if (isLive) liveMahaIdx = i;
         lastDashaPeriods.push({ lordIdx: entry.lordIdx, startMs, endMs });
         dashaRows.push(`<tr class="${isLive ? "active-period" : ""}"><td><strong>${GRAHA_TA[entry.lordIdx]}</strong>${isLive ? '<span class="badge-live">நடப்பு தசை</span>' : ""}</td><td>${i === 0 ? `${bal.y}ஆ ${bal.m}மா ${bal.d}நா (இருப்பு)` : `${entry.years} ஆண்டு`}</td><td>${formatDateDDMMYYYY(new Date(startMs))}</td><td>${formatDateDDMMYYYY(new Date(endMs))}</td></tr>`);
@@ -924,7 +992,12 @@
       const sel = document.getElementById("bhuktiDashaSelect");
       sel.innerHTML = lastDashaPeriods.map((p, idx) => `<option value="${idx}">${idx + 1}. ${GRAHA_TA[p.lordIdx]} தசை${idx === liveMahaIdx ? " (நடப்பு)" : ""}</option>`).join("");
       sel.value = String(liveMahaIdx);
-      document.getElementById("dashaSummary").innerHTML = `<strong>${record.name}</strong> (${record.dateStr}) — பிறந்த கால தசா இருப்பு: <strong>${bal.lordTa} தசை</strong> (<strong>${bal.y}</strong> ஆண்டு, <strong>${bal.m}</strong> மாதம், <strong>${bal.d}</strong> நாள்) | நடப்பு தசை: <strong>${GRAHA_TA[lastDashaPeriods[liveMahaIdx].lordIdx]}</strong>`;
+      const activeMaha = lastDashaPeriods[liveMahaIdx] || lastDashaPeriods[0];
+      document.getElementById("dashaSummary").innerHTML = `<strong>${record.name}</strong> (${record.dateStr}) — பிறந்த கால தசா இருப்பு: <strong>${bal.lordTa} தசை</strong> (<strong>${bal.y}</strong> ஆண்டு, <strong>${bal.m}</strong> மாதம், <strong>${bal.d}</strong> நாள்) | நடப்பு தசை: <strong>${GRAHA_TA[activeMaha.lordIdx]}</strong>`;
+      if (balBox) {
+        balBox.style.display = "block";
+        balBox.innerHTML = buildDashaBalangalHtml(record, activeMaha, nowMs);
+      }
       document.getElementById("dashaTableWrap").innerHTML = `<table class="data-table"><thead><tr><th>தசா நாதன்</th><th>கால அளவு</th><th>தொடக்கம்</th><th>முடிவு</th></tr></thead><tbody>${dashaRows.join("")}</tbody></table>`;
       renderBhuktiTable(liveMahaIdx);
       if (record.sunriseMs && record.sunsetMs && record.sunsetMs > record.sunriseMs) {
