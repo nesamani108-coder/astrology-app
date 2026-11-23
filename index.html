@@ -77,7 +77,7 @@
 <body>
   <div class="app-header">
     <h1 class="app-title">தமிழ் ஜாதக &amp; பஞ்சாங்க செயலி</h1>
-    <span style="font-size:12px;color:#57606a;">5 Tabs • Mandhi • Balangal • PDF</span>
+    <span style="font-size:12px;color:#57606a;">5 Tabs • Mandhi • Panchangam • Balangal • PDF</span>
   </div>
 
   <div class="tab-bar" role="tablist">
@@ -308,6 +308,17 @@
       { name: "மைத்ர தாரை", tip: "புதிய முயற்சி, இடம் வாங்க ஏற்ற நாள்" },
       { name: "அதி மைத்ர தாரை", tip: "சுப நிகழ்ச்சி, வாகனம் வாங்க ஏற்ற நாள்" }
     ];
+    const GRAHA_PREDICTION_TA = {
+      "சூரியன்": "அதிகாரம், அரசு/நிர்வாகத் தொடர்பு, தந்தை/மூத்தோர் வழிகாட்டல், சுயமரியாதை மற்றும் பதவி உயர்வு முயற்சிகளில் கவனம் கூடும்.",
+      "சந்திரன்": "மனநிலை மாற்றம், பயணம், நீர்/திரவ/உணவு சார்ந்த முயற்சிகள், தாய்வழி ஆதரவு மற்றும் மக்கள் தொடர்பு அதிகரிக்கும்.",
+      "செவ்வாய்": "தைரியம், துணிச்சல், நிலம்/தொழில்/கடின உழைப்பு வேகம் பெறும்; அவசர முடிவுகள், கோபம் மற்றும் சிறு காயங்களை தவிர்க்க வேண்டும்.",
+      "புதன்": "கல்வி, கணக்கு, வணிகம், பேச்சுத்திறன், எழுத்து மற்றும் புதிய திட்டமிடல் மூலம் முன்னேற்றம் கிடைக்கும்.",
+      "குரு": "நற்பெயர், ஆலோசனை, செல்வ வளர்ச்சி, குரு/பெரியோர் ஆசி, குடும்ப ஒற்றுமை மற்றும் நற்செயல்கள் கைகூடும்.",
+      "சுக்கிரன்": "வசதி, கலை/அழகு/வாசனை/உணவு சார்ந்த துறைகளில் லாபம், குடும்ப மகிழ்ச்சி மற்றும் உறவுகளில் இனிமை கூடும்.",
+      "சனி": "மெதுவான ஆனால் நிலையான உழைப்பு, பொறுப்பு சுமை, பழைய கடன்கள்/பிரச்சனைகளை தீர்க்கும் முயற்சி மற்றும் ஒழுக்கம் தேவைப்படும்.",
+      "ராகு": "புதிய/மாறுபட்ட முயற்சிகள், திடீர் வாய்ப்புகள், வெளியூர்/புதிய சூழல் மாற்றம் வரும்; குழப்பம் மற்றும் அதிக ஆசையை கட்டுப்படுத்த வேண்டும்.",
+      "கேது": "ஆன்மீகம், தனிமை/சிந்தனை, ஆராய்ச்சி, பழைய விஷயங்களை விலக்குதல் மற்றும் சூட்சமமான முடிவுகள் உருவாகும்."
+    };
 
     const NAKSHATRA_TA = [
       "அசுவினி", "பரணி", "கார்த்திகை", "ரோகிணி", "மிருகசீரிடம்", "திருவாதிரை", "புனர்பூசம்", "பூசம்", "ஆயில்யம்",
@@ -344,6 +355,8 @@
     let sampleTestRecord = null;
     let lastDashaPeriods = [];
     let lastBhuktiList = [];
+    let currentSelectedDashaIdx = 0;
+    let currentSelectedBhuktiIdx = 0;
 
     function switchTab(tabId) {
       document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === tabId));
@@ -803,37 +816,82 @@
       }
       return { lordIdx: DASHA_SEQUENCE[seqPos].lordIdx, startMs: parentStartMs, endMs: parentStartMs + totalMs * (DASHA_SEQUENCE[seqPos].years / 120) };
     }
-    function buildDashaBalangalHtml(record, mahaPeriod, nowMs) {
+    function getGrahaPlacementByLordIdx(record, lordIdx) {
+      const grahasOnly = (record.placements || []).filter((p) => p.nameEn !== "Lagna" && p.nameEn !== "Mandhi");
+      const lordNameTa = GRAHA_TA[lordIdx];
+      return grahasOnly.find((p) => p.nameTa === lordNameTa) || null;
+    }
+    function getHousePredictionLineTa(houseNum) {
+      const map = {
+        1: "சுய முயற்சி, உடல்நலம் மற்றும் தனிப்பட்ட அடையாளத்தில் கவனம் இருக்கும்.",
+        2: "வருமானம், பேச்சு, குடும்ப விஷயங்கள் மற்றும் சேமிப்பில் முன்னேற்றம்/கவனம் வரும்.",
+        3: "முயற்சி, பயணங்கள், தொடர்பு மற்றும் உடன்பிறப்பு/நண்பர் சார்ந்த விஷயங்கள் நடக்கும்.",
+        4: "வீடு, வாகனம், தாய், கல்வி மற்றும் மன நிம்மதி சார்ந்த மாற்றங்கள் தோன்றும்.",
+        5: "புத்தி கூர்மை, பிள்ளைகள், பூர்விக/புதிய திட்டங்கள் மற்றும் படைப்புத் திறன் வெளிப்படும்.",
+        6: "போட்டி, கடன், நோய், வேலைச்சுமை மற்றும் எதிர்ப்புகளை சமாளிக்கும் நிலை வரும்.",
+        7: "துணை, கூட்டாண்மை, வாடிக்கையாளர் தொடர்பு மற்றும் பொது சந்திப்புகள் முக்கியமாகும்.",
+        8: "திடீர் மாற்றம், மறைமுக விஷயங்கள், காத்திருப்பு மற்றும் உடல்/மன கவனமும் தேவைப்படும்.",
+        9: "அதிர்ஷ்டம், நெடுந்தூரப் பயணம், தந்தை/குரு வழிகாட்டுதல் மற்றும் தர்ம சிந்தனை கூடும்.",
+        10: "தொழில், வேலை, சமூக அந்தஸ்து மற்றும் செயல்களுக்கான பலன் நேரடியாகத் தெரியும்.",
+        11: "லாபம், வருவாய் உயர்வு, ஆசைகள் நிறைவேறுதல் மற்றும் நண்பர்கள் உதவி கிடைக்கும்.",
+        12: "செலவு, வெளிநாடு/வெளியூர் பயணம், அலைச்சல் மற்றும் ஓய்வு/தூக்கத்தில் கவனம் தேவைப்படும்."
+      };
+      return map[houseNum] || "";
+    }
+    function buildFullTab3PredictionsHtml(record, mahaPeriod, bhuktiObj, nowMs) {
+      const lagnaName = RASI_TA[record.lagnaIdx];
+      const rasiName = RASI_TA[record.rasiIdx];
+      const nakName = NAKSHATRA_TA[record.nakIdx];
+      const ln = LAGNA_NOTES[record.lagnaIdx] || {};
+
+      const isMahaLive = nowMs >= mahaPeriod.startMs && nowMs < mahaPeriod.endMs;
+      const refTimeMs = isMahaLive ? nowMs : mahaPeriod.startMs + 1000;
+      const activeBhukti = bhuktiObj
+        ? { lordIdx: bhuktiObj.subLordIdx, startMs: bhuktiObj.startMs, endMs: bhuktiObj.endMs }
+        : findActiveSubPeriod(mahaPeriod.startMs, mahaPeriod.endMs, mahaPeriod.lordIdx, refTimeMs);
+      const isBhuktiLive = nowMs >= activeBhukti.startMs && nowMs < activeBhukti.endMs;
+      const antaraRefMs = isBhuktiLive ? nowMs : activeBhukti.startMs + 1000;
+      const activeAntara = findActiveSubPeriod(activeBhukti.startMs, activeBhukti.endMs, activeBhukti.lordIdx, antaraRefMs);
+
+      const mahaLordTa = GRAHA_TA[mahaPeriod.lordIdx];
+      const bhuktiLordTa = GRAHA_TA[activeBhukti.lordIdx];
+      const antaraLordTa = GRAHA_TA[activeAntara.lordIdx];
+
+      const mahaPl = getGrahaPlacementByLordIdx(record, mahaPeriod.lordIdx);
+      const bhuktiPl = getGrahaPlacementByLordIdx(record, activeBhukti.lordIdx);
+      const antaraPl = getGrahaPlacementByLordIdx(record, activeAntara.lordIdx);
+
+      const mahaHouse = mahaPl ? getHouseFromLagna(mahaPl.rasiIdx, record.lagnaIdx) : 1;
+      const bhuktiHouse = bhuktiPl ? getHouseFromLagna(bhuktiPl.rasiIdx, record.lagnaIdx) : 1;
+      const antaraHouse = antaraPl ? getHouseFromLagna(antaraPl.rasiIdx, record.lagnaIdx) : 1;
+
       const grahasOnly = (record.placements || []).filter((p) => p.nameEn !== "Lagna" && p.nameEn !== "Mandhi");
       const byEng = Object.fromEntries(grahasOnly.map((p) => [p.nameEn, p]));
-      const describeGrahaPos = (lordIdx) => {
-        const engKey = GRAHA_TA[lordIdx] === "ராகு" ? "Rahu" : GRAHA_TA[lordIdx] === "கேது" ? "Ketu" : SEVEN_GRAHA_KEYS.find((k, idx) => GRAHA_TA[idx] === GRAHA_TA[lordIdx]);
-        const pl = engKey ? byEng[engKey] : null;
-        if (!pl) return `${GRAHA_TA[lordIdx]}`;
-        const hLagna = getHouseFromLagna(pl.rasiIdx, record.lagnaIdx);
-        const hRasi = getHouseFromLagna(pl.rasiIdx, record.rasiIdx);
-        return `<strong>${pl.nameTa}</strong> (${RASI_TA[pl.rasiIdx]} • லக்னத்திற்கு ${hLagna}ம், ராசிக்கு ${hRasi}ம்)`;
-      };
-
-      const activeBhukti = findActiveSubPeriod(mahaPeriod.startMs, mahaPeriod.endMs, mahaPeriod.lordIdx, nowMs);
-      const activeAntara = findActiveSubPeriod(activeBhukti.startMs, activeBhukti.endMs, activeBhukti.lordIdx, nowMs);
-
       const h10Lord = byEng[getLordKeyForHouse(record.lagnaIdx, 10)];
       const h10House = h10Lord ? getHouseFromLagna(h10Lord.rasiIdx, record.lagnaIdx) : 10;
       const h7Lord = byEng[getLordKeyForHouse(record.lagnaIdx, 7)];
       const h7House = h7Lord ? getHouseFromLagna(h7Lord.rasiIdx, record.lagnaIdx) : 7;
 
-      const activeDoshaList = (record.doshas || []).filter((d) => d.status === "உண்டு").map((d) => d.name);
-      const reliefDoshaList = (record.doshas || []).filter((d) => d.status !== "இல்லை" && d.status !== "உண்டு").map((d) => `${d.name} (${d.status})`);
+      const activeDoshas = (record.doshas || []).filter((d) => d.status === "உண்டு").map((d) => d.name);
+      const periodLabelPrefix = (isMahaLive && (!bhuktiObj || isBhuktiLive)) ? "நடப்பு" : "தேர்ந்தெடுத்த";
 
       return `
-        <strong>தசா / புத்தி / அந்தர பலன்கள் (Dasha, Bhukti &amp; Antardasha Notes):</strong><br/>
-        • <strong>தசா நாதன்:</strong> ${describeGrahaPos(mahaPeriod.lordIdx)} (${formatDateDDMMYYYY(new Date(mahaPeriod.startMs))} – ${formatDateDDMMYYYY(new Date(mahaPeriod.endMs))})<br/>
-        • <strong>புத்தி நாதன்:</strong> ${describeGrahaPos(activeBhukti.lordIdx)} (${formatDateDDMMYYYY(new Date(activeBhukti.startMs))} – ${formatDateDDMMYYYY(new Date(activeBhukti.endMs))})<br/>
-        • <strong>அந்தர நாதன்:</strong> ${describeGrahaPos(activeAntara.lordIdx)} (${formatDateDDMMYYYY(new Date(activeAntara.startMs))} – ${formatDateDDMMYYYY(new Date(activeAntara.endMs))})<br/>
-        • <strong>தொழில் &amp; உறவு பார்வை:</strong> 10ம் அதிபதி ${h10Lord ? `<strong>${h10Lord.nameTa}</strong> (${h10House}ம் பாவகம்: ${BHAVA_MEANINGS_TA[h10House - 1]})` : "-"} • 7ம் அதிபதி ${h7Lord ? `<strong>${h7Lord.nameTa}</strong> (${h7House}ம் பாவகம்: ${BHAVA_MEANINGS_TA[h7House - 1]})` : "-"}<br/>
-        • <strong>தோஷ குறிப்பு:</strong> ${activeDoshaList.length ? `கவனிக்க வேண்டியவை: <strong>${activeDoshaList.join(", ")}</strong>` : "முக்கிய தோஷ பாதிப்புகள் இல்லை"}${reliefDoshaList.length ? ` • நிவர்த்தி/கவனம்: ${reliefDoshaList.join(", ")}` : ""}
+        <div style="font-size:13px;font-weight:700;color:#1f6feb;margin-bottom:6px;">பலன்கள் (Predictions — பொது &amp; ${periodLabelPrefix} காலம்)</div>
+        <div>• <strong>பொது பலன் (${lagnaName} லக்னம் / ${rasiName} ராசி / ${nakName} நட்சத்திரம்):</strong> சுய முயற்சியும் உழைப்பும் முக்கியப் பங்கு வகிக்கும் ஜாதகம். சுப கிரக பலன் (<strong>${ln.subar || "-"}</strong>) வலுப்பெறும் காலங்களில் முன்னேற்றமும், பாதக/மாரக அமைப்பு (<strong>${ln.badhakam || "-"}</strong> / <strong>${ln.marakam || "-"}</strong>) வரும் காலங்களில் நிதானமும் அவசியம்.</div>
+        <div style="margin-top:4px;">• <strong>${periodLabelPrefix} மகா தசை பலன் (${mahaLordTa} தசை — ${mahaHouse}ம் பாவகம்):</strong> ${GRAHA_PREDICTION_TA[mahaLordTa] || ""} ${getHousePredictionLineTa(mahaHouse)}</div>
+        <div style="margin-top:4px;">• <strong>${periodLabelPrefix} புத்தி பலன் (${mahaLordTa} / ${bhuktiLordTa} — ${bhuktiHouse}ம் பாவகம்):</strong> ${GRAHA_PREDICTION_TA[bhuktiLordTa] || ""} ${getHousePredictionLineTa(bhuktiHouse)}</div>
+        <div style="margin-top:4px;">• <strong>${periodLabelPrefix} அந்தர பலன் (${bhuktiLordTa} / ${antaraLordTa} — ${antaraHouse}ம் பாவகம்):</strong> குறுகிய கால நிகழ்வுகளில் <strong>${antaraLordTa}</strong> மற்றும் <strong>${antaraHouse}ம்</strong> பாவக (${BHAVA_MEANINGS_TA[antaraHouse - 1]}) தாக்கம் தெரியும்.</div>
+        <div style="margin-top:4px;">• <strong>தொழில் &amp; குடும்ப பலன்:</strong> 10ம் அதிபதி <strong>${h10Lord ? h10Lord.nameTa : "-"}</strong> (${h10House}ம் இடம்) மூலம் தொழில்/பணி சார்ந்த முடிவுகள் அமையும்; 7ம் அதிபதி <strong>${h7Lord ? h7Lord.nameTa : "-"}</strong> (${h7House}ம் இடம்) மூலம் கூட்டாண்மை மற்றும் குடும்ப உறவுகளில் கவனம் தேவை.</div>
+        <div style="margin-top:4px;">• <strong>கவனிக்க வேண்டியவை:</strong> ${activeDoshas.length ? `<strong>${activeDoshas.join(", ")}</strong> உள்ளதால் முக்கிய முடிவுகளில் பொறுமையும் ஆலோசனையும் அவசியம்.` : "கடுமையான தோஷ பாதிப்புகள் இல்லை; திட்டமிட்டு செயல்படலாம்."}</div>
       `;
+    }
+    function syncTab3PredictionForSelection(dashaIdx = currentSelectedDashaIdx, bhuktiIdx = currentSelectedBhuktiIdx) {
+      const balBox = document.getElementById("dashaBalangalBox");
+      if (!latestRecord || !balBox || !lastDashaPeriods.length) return;
+      const targetMaha = lastDashaPeriods[dashaIdx] || lastDashaPeriods[0];
+      const targetBhukti = lastBhuktiList[bhuktiIdx] || lastBhuktiList[0] || null;
+      balBox.style.display = "block";
+      balBox.innerHTML = buildFullTab3PredictionsHtml(latestRecord, targetMaha, targetBhukti, Date.now());
     }
     function openSrirangamSheet(record) {
       if (!record) return;
@@ -942,6 +1000,7 @@
       wrap.innerHTML = `<div style="font-size:12px;font-weight:700;color:#1a7f37;margin-top:8px;">${GRAHA_TA[bhukti.mahaLordIdx]} / ${GRAHA_TA[bhukti.subLordIdx]} — அந்தர்தசா (Sub-Sub-Periods)</div><table class="data-table"><thead><tr><th>தசை / புத்தி / அந்தரம்</th><th>காலம்</th><th>தொடக்கம்</th><th>முடிவு</th></tr></thead><tbody>${rows.join("")}</tbody></table>`;
     }
     function renderBhuktiTable(dashaIdx) {
+      currentSelectedDashaIdx = dashaIdx;
       const target = lastDashaPeriods[dashaIdx];
       const wrap = document.getElementById("bhuktiTableWrap");
       if (!target) { wrap.innerHTML = ""; document.getElementById("antardashaTableWrap").innerHTML = ""; return; }
@@ -958,12 +1017,14 @@
         rows.push(`<tr id="bhuktiRow-${i}" class="${isLive ? "active-period" : ""}" style="cursor:pointer;" onclick="selectBhuktiForAntardasha(${i})"><td><strong>${GRAHA_TA[target.lordIdx]} / ${GRAHA_TA[sub.lordIdx]}</strong>${isLive ? '<span class="badge-live">இப்போது</span>' : ""}</td><td>${days} நாள்</td><td>${formatDateDDMMYYYY(new Date(subStart))}</td><td>${formatDateDDMMYYYY(new Date(subEnd))}</td><td><button type="button" class="small secondary">அந்தரம்</button></td></tr>`);
         cursor = subEnd;
       }
-      wrap.innerHTML = `<div style="font-size:12px;font-weight:700;color:#0969da;margin-top:8px;">${GRAHA_TA[target.lordIdx]} தசை — புத்தி (Click a row for Antardasha)</div><table class="data-table"><thead><tr><th>தசை / புத்தி</th><th>காலம்</th><th>தொடக்கம்</th><th>முடிவு</th><th>அந்தர்தசா</th></tr></thead><tbody>${rows.join("")}</tbody></table>`;
+      wrap.innerHTML = `<div style="font-size:12px;font-weight:700;color:#0969da;margin-top:8px;">${GRAHA_TA[target.lordIdx]} தசை — புத்தி (Click a row for Antardasha &amp; Prediction)</div><table class="data-table"><thead><tr><th>தசை / புத்தி</th><th>காலம்</th><th>தொடக்கம்</th><th>முடிவு</th><th>அந்தர்தசா</th></tr></thead><tbody>${rows.join("")}</tbody></table>`;
       selectBhuktiForAntardasha(defaultBhuktiIdx);
     }
     function selectBhuktiForAntardasha(bhuktiIdx) {
+      currentSelectedBhuktiIdx = bhuktiIdx;
       document.querySelectorAll('[id^="bhuktiRow-"]').forEach((r, idx) => r.classList.toggle("selected-row", idx === bhuktiIdx));
       renderAntardashaTable(bhuktiIdx);
+      syncTab3PredictionForSelection(currentSelectedDashaIdx, currentSelectedBhuktiIdx);
     }
     function renderDashaAndKaalam(record) {
       const balBox = document.getElementById("dashaBalangalBox");
@@ -989,15 +1050,12 @@
         dashaRows.push(`<tr class="${isLive ? "active-period" : ""}"><td><strong>${GRAHA_TA[entry.lordIdx]}</strong>${isLive ? '<span class="badge-live">நடப்பு தசை</span>' : ""}</td><td>${i === 0 ? `${bal.y}ஆ ${bal.m}மா ${bal.d}நா (இருப்பு)` : `${entry.years} ஆண்டு`}</td><td>${formatDateDDMMYYYY(new Date(startMs))}</td><td>${formatDateDDMMYYYY(new Date(endMs))}</td></tr>`);
         cursorMs = endMs;
       }
+      currentSelectedDashaIdx = liveMahaIdx;
       const sel = document.getElementById("bhuktiDashaSelect");
       sel.innerHTML = lastDashaPeriods.map((p, idx) => `<option value="${idx}">${idx + 1}. ${GRAHA_TA[p.lordIdx]} தசை${idx === liveMahaIdx ? " (நடப்பு)" : ""}</option>`).join("");
       sel.value = String(liveMahaIdx);
       const activeMaha = lastDashaPeriods[liveMahaIdx] || lastDashaPeriods[0];
       document.getElementById("dashaSummary").innerHTML = `<strong>${record.name}</strong> (${record.dateStr}) — பிறந்த கால தசா இருப்பு: <strong>${bal.lordTa} தசை</strong> (<strong>${bal.y}</strong> ஆண்டு, <strong>${bal.m}</strong> மாதம், <strong>${bal.d}</strong> நாள்) | நடப்பு தசை: <strong>${GRAHA_TA[activeMaha.lordIdx]}</strong>`;
-      if (balBox) {
-        balBox.style.display = "block";
-        balBox.innerHTML = buildDashaBalangalHtml(record, activeMaha, nowMs);
-      }
       document.getElementById("dashaTableWrap").innerHTML = `<table class="data-table"><thead><tr><th>தசா நாதன்</th><th>கால அளவு</th><th>தொடக்கம்</th><th>முடிவு</th></tr></thead><tbody>${dashaRows.join("")}</tbody></table>`;
       renderBhuktiTable(liveMahaIdx);
       if (record.sunriseMs && record.sunsetMs && record.sunsetMs > record.sunriseMs) {
@@ -1077,7 +1135,10 @@
     document.getElementById("printPoruthamBtn").addEventListener("click", openPoruthamPrintSheet);
     document.getElementById("printSheetBtn").addEventListener("click", () => window.print());
     document.getElementById("closeSheetBtn").addEventListener("click", () => { document.getElementById("sheetOverlay").style.display = "none"; });
-    document.getElementById("bhuktiDashaSelect").addEventListener("change", (e) => renderBhuktiTable(Number(e.target.value)));
+    document.getElementById("bhuktiDashaSelect").addEventListener("change", (e) => {
+      const idx = Number(e.target.value);
+      renderBhuktiTable(idx);
+    });
     document.getElementById("calcBtn").addEventListener("click", () => runCalculation(true));
     document.getElementById("checkPoruthamBtn").addEventListener("click", runPoruthamCheck);
     document.getElementById("exportBtn").addEventListener("click", () => {
