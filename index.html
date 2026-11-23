@@ -552,13 +552,11 @@
     runPoruthamCheck();
   </script>
 
-  <!-- Isolated Town Search Module -->
+  <!-- Isolated Town Search Module (UPDATED FOR ANDROID) -->
   <script>
   (() => {
     try {
-      const TOWN_CACHE_KEY = "safe_town_search_cache_v2";
-      let lastTownFetchMs = 0;
-      const isFileProtocol = location.protocol === "file:";
+      const TOWN_CACHE_KEY = "safe_town_search_cache_v3";
 
       function readTownCache() {
         try { return JSON.parse(localStorage.getItem(TOWN_CACHE_KEY) || "{}"); }
@@ -600,37 +598,25 @@
           return;
         }
 
-        if (isFileProtocol) {
-          setTownStatus("⚠️ You opened this file directly (file://). Browsers block online searches from file:// — serve via http://localhost (e.g. `python3 -m http.server 8000`) and reload.", true);
-          console.warn("Town search requires HTTP. Run: python3 -m http.server 8000 → open http://localhost:8000/");
-          if (listEl) listEl.style.display = "none";
-          return;
-        }
-
         const cache = readTownCache();
         const key = query.toLowerCase();
         let matches = cache[key];
 
         if (!Array.isArray(matches)) {
-          const wait = Math.max(0, 1100 - (Date.now() - lastTownFetchMs));
-          if (wait > 0) await new Promise((r) => setTimeout(r, wait));
-          lastTownFetchMs = Date.now();
           setTownStatus(`Searching "${query}"...`);
           try {
-            const raw = await res.json();
-matches = (raw.features || []).map((f) => ({
-  label: [f.properties.name, f.properties.state, f.properties.country]
-    .filter(Boolean).join(", "),
-  lat: f.geometry.coordinates[1],
-  lon: f.geometry.coordinates[0]
-}));
+            // Photon API (works perfectly on Android mobile browsers)
+            const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=6`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const raw = await res.json();
-            matches = (Array.isArray(raw) ? raw : []).map((r) => ({
-              label: r.display_name.split(",").slice(0, 3).join(",").trim(),
-              lat: parseFloat(r.lat),
-              lon: parseFloat(r.lon)
-            })).filter((m) => !Number.isNaN(m.lat) && !Number.isNaN(m.lon));
+            
+            matches = (raw.features || []).map((f) => ({
+              label: [f.properties.name, f.properties.state, f.properties.country]
+                .filter(Boolean).join(", "),
+              lat: f.geometry.coordinates[1],
+              lon: f.geometry.coordinates[0]
+            })).filter((m) => m.lat && m.lon);
+
             if (matches.length > 0) {
               cache[key] = matches;
               writeTownCache(cache);
@@ -673,9 +659,6 @@ matches = (raw.features || []).map((f) => ({
         }
       });
 
-      if (isFileProtocol) {
-        setTimeout(() => setTownStatus("⚠️ This page is opened as file:// — town search cannot reach the internet. Serve via http://localhost to enable it.", true), 400);
-      }
     } catch (err) {
       const statusEl = document.getElementById("townStatus");
       if (statusEl) statusEl.textContent = `Town search module notice: ${err.message}`;
