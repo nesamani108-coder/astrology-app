@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tamil Astrology App (5 Tabs • Antardasha • Test Chart • PDF)</title>
+  <title>Tamil Astrology App (5 Tabs • Mandhi • Panchangam • Antardasha • PDF)</title>
   <style>
     * { box-sizing: border-box; }
     body { font-family: system-ui, -apple-system, sans-serif; margin: 10px; background: #f3f5f8; color: #1b1f24; }
@@ -77,7 +77,7 @@
 <body>
   <div class="app-header">
     <h1 class="app-title">தமிழ் ஜாதக &amp; பஞ்சாங்க செயலி</h1>
-    <span style="font-size:12px;color:#57606a;">5 Tabs • Antardasha • Test Chart • PDF</span>
+    <span style="font-size:12px;color:#57606a;">5 Tabs • Mandhi • Antardasha • PDF</span>
   </div>
 
   <div class="tab-bar" role="tablist">
@@ -241,10 +241,11 @@
   </div>
 
   <script>
-    const STORAGE_KEY = "tamil_astro_5tab_v15_profiles";
+    const STORAGE_KEY = "tamil_astro_5tab_v16_profiles";
     const DEG2RAD = Math.PI / 180;
     const RAD2DEG = 180 / Math.PI;
     const MS_PER_DAY = 86400000;
+    const IST_OFFSET_MS = 5.5 * 3600 * 1000;
     const DAYS_PER_YEAR = 365.2425;
     const mod360 = (d) => ((d % 360) + 360) % 360;
     const sind = (d) => Math.sin(d * DEG2RAD);
@@ -366,8 +367,11 @@
     }
     function jdToIstDate(jdVal) { return new Date((jdVal - 2440587.5) * MS_PER_DAY); }
     function formatIstClock(dateObj) {
-      const ist = new Date(dateObj.getTime() + 5.5 * 3600 * 1000);
+      const ist = new Date(dateObj.getTime() + IST_OFFSET_MS);
       return `${String(ist.getUTCHours()).padStart(2, "0")}:${String(ist.getUTCMinutes()).padStart(2, "0")}:${String(ist.getUTCSeconds()).padStart(2, "0")}`;
+    }
+    function getIstMidnightUtcMs(year, month, day) {
+      return Date.UTC(year, month - 1, day, 0, 0, 0) - IST_OFFSET_MS;
     }
     function calcSunriseSunsetIST(year, month, day, lat, lon) {
       const n = Math.floor(toJulianDay(year, month, day, 0) - 2451545.0 + 0.5) + 0.0008 - lon / 360.0;
@@ -427,6 +431,53 @@
       const eps = 23.439291 - 0.0130042 * T;
       return mod360(mod360(Math.atan2(cosd(lst), -(sind(lst) * cosd(eps) + tand(lat) * sind(eps))) * RAD2DEG) - ayanamsa);
     }
+    function computeMandhiSiderealLon(dateStr, timeStr, lat, lon, jd, sunInfo) {
+      const [year, month, day] = dateStr.split("-").map(Number);
+      const istBirthMs = jdToIstDate(jd).getTime();
+      const istMiddayUtcMs = getIstMidnightUtcMs(year, month, day) + 12 * 3600 * 1000;
+      const calendarWeekday = new Date(istMiddayUtcMs + IST_OFFSET_MS).getUTCDay();
+
+      const daySatSlot = [7, 6, 5, 4, 3, 2, 1][calendarWeekday];
+      const nightSatSlot = [3, 2, 1, 7, 6, 5, 4][calendarWeekday];
+
+      let mandhiMs;
+      if (sunInfo.sunriseDate && sunInfo.sunsetDate) {
+        const riseMs = sunInfo.sunriseDate.getTime();
+        const setMs = sunInfo.sunsetDate.getTime();
+        if (istBirthMs >= riseMs && istBirthMs <= setMs) {
+          mandhiMs = riseMs + (daySatSlot - 1) * ((setMs - riseMs) / 8);
+        } else {
+          let nightStartMs;
+          let nightEndMs;
+          let nightWeekday = calendarWeekday;
+          if (istBirthMs > setMs) {
+            const nextDate = new Date(Date.UTC(year, month - 1, day + 1));
+            const nextSun = calcSunriseSunsetIST(nextDate.getUTCFullYear(), nextDate.getUTCMonth() + 1, nextDate.getUTCDate(), lat, lon);
+            nightStartMs = setMs;
+            nightEndMs = nextSun.sunriseDate ? nextSun.sunriseDate.getTime() : setMs + 12 * 3600 * 1000;
+          } else {
+            const prevDate = new Date(Date.UTC(year, month - 1, day - 1));
+            const prevSun = calcSunriseSunsetIST(prevDate.getUTCFullYear(), prevDate.getUTCMonth() + 1, prevDate.getUTCDate(), lat, lon);
+            nightWeekday = new Date(getIstMidnightUtcMs(prevDate.getUTCFullYear(), prevDate.getUTCMonth() + 1, prevDate.getUTCDate()) + 12 * 3600 * 1000 + IST_OFFSET_MS).getUTCDay();
+            nightStartMs = prevSun.sunsetDate ? prevSun.sunsetDate.getTime() : riseMs - 12 * 3600 * 1000;
+            nightEndMs = riseMs;
+          }
+          const resolvedNightSlot = [3, 2, 1, 7, 6, 5, 4][nightWeekday];
+          mandhiMs = nightStartMs + (resolvedNightSlot - 1) * ((nightEndMs - nightStartMs) / 8);
+        }
+      } else {
+        const parts = (timeStr || "03:35:00").split(":").map(Number);
+        const birthHourIst = (parts[0] || 0) + (parts[1] || 0) / 60 + (parts[2] || 0) / 3600;
+        const isDay = birthHourIst >= 6 && birthHourIst <= 18;
+        const slot = isDay ? daySatSlot : nightSatSlot;
+        const baseHour = isDay ? 6 : 18;
+        const mandhiJd = toJulianDay(year, month, day, (baseHour + (slot - 1) * 1.5) - 5.5);
+        return computeSiderealLagna(mandhiJd, lat, lon, getLahiriAyanamsa(mandhiJd));
+      }
+
+      const mandhiJd = (mandhiMs / MS_PER_DAY) + 2440587.5;
+      return computeSiderealLagna(mandhiJd, lat, lon, getLahiriAyanamsa(mandhiJd));
+    }
     function computeNavamsaRasiIdx(sidLon) {
       const lon = mod360(sidLon), rasiIdx = Math.floor(lon / 30), navPart = Math.floor((lon % 30) / (30 / 9)), mod = rasiIdx % 3;
       return ((mod === 0 ? rasiIdx : mod === 1 ? (rasiIdx + 8) % 12 : (rasiIdx + 4) % 12) + navPart) % 12;
@@ -441,15 +492,15 @@
     }
     function findSankrantiCrossingMs(year, month, signIdx) {
       const targetLon = mod360(signIdx * 30);
-      const baseUtc = Date.UTC(year, month - 1, 15, 0, 0, 0);
+      const baseIstStart = getIstMidnightUtcMs(year, month, 15);
       let prevDiff = null;
       for (let offset = -35; offset <= 35; offset++) {
-        const dt = new Date(baseUtc + offset * MS_PER_DAY);
-        const jd = toJulianDay(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate(), 0 - 5.5);
+        const sampleMs = baseIstStart + offset * MS_PER_DAY;
+        const jd = (sampleMs / MS_PER_DAY) + 2440587.5;
         const sunSid = mod360(computeTropicalLongitudes(jd).Sun - getLahiriAyanamsa(jd));
         const diff = mod360(sunSid - targetLon);
         if (prevDiff !== null && prevDiff > 300 && diff < 60) {
-          return dt.getTime() - (prevDiff / (prevDiff + (360 - diff))) * MS_PER_DAY;
+          return sampleMs - (prevDiff / (prevDiff + (360 - diff))) * MS_PER_DAY;
         }
         prevDiff = diff;
       }
@@ -457,14 +508,14 @@
     }
     function getTamilCalendarDate(dateStr, sunSidLon) {
       const [year, month, day] = dateStr.split("-").map(Number);
-      const utcDayStart = Date.UTC(year, month - 1, day, 0, 0, 0);
-      const weekdayTa = TAMIL_DAYS_TA[new Date(utcDayStart).getUTCDay()];
+      const istDayStartMs = getIstMidnightUtcMs(year, month, day);
+      const weekdayTa = TAMIL_DAYS_TA[new Date(istDayStartMs + 12 * 3600 * 1000 + IST_OFFSET_MS).getUTCDay()];
       const tamilMonthIdx = Math.floor(mod360(sunSidLon) / 30);
 
       let tamilDay = Math.floor(mod360(sunSidLon) % 30) + 1;
       const sankrantiMs = findSankrantiCrossingMs(year, month, tamilMonthIdx);
       if (sankrantiMs) {
-        const diffDays = Math.floor((utcDayStart - sankrantiMs) / MS_PER_DAY) + 1;
+        const diffDays = Math.floor((istDayStartMs - sankrantiMs) / MS_PER_DAY) + 1;
         if (diffDays >= 1 && diffDays <= 32) tamilDay = diffDays;
       }
 
@@ -535,7 +586,7 @@
       ];
     }
     function computeAspects(placements, lagnaIdx) {
-      const grahasOnly = placements.filter((p) => p.nameEn !== "Lagna");
+      const grahasOnly = placements.filter((p) => p.nameEn !== "Lagna" && p.nameEn !== "Mandhi");
       const items = [];
       for (let i = 0; i < grahasOnly.length; i++) {
         const src = grahasOnly[i];
@@ -560,6 +611,7 @@
       const jd = toJulianDay(year, month, day, ((parts[0] || 0) + (parts[1] || 0) / 60 + (parts[2] || 0) / 3600) - 5.5);
       const ayanamsa = getLahiriAyanamsa(jd), sun = calcSunriseSunsetIST(year, month, day, lat, lon), trop = computeTropicalLongitudes(jd);
       const sunSid = mod360(trop.Sun - ayanamsa), moonSid = mod360(trop.Moon - ayanamsa);
+      const mandhiSid = computeMandhiSiderealLon(dateStr, timeStr, lat, lon, jd, sun);
 
       let sunSidForTamilDay = sunSid;
       if (sun.sunriseDate) {
@@ -577,7 +629,8 @@
         { shortTa: "சுக்", nameTa: "சுக்கிரன்", nameEn: "Venus", sid: mod360(trop.Venus - ayanamsa) },
         { shortTa: "சனி", nameTa: "சனி", nameEn: "Saturn", sid: mod360(trop.Saturn - ayanamsa) },
         { shortTa: "ரா", nameTa: "ராகு", nameEn: "Rahu", sid: mod360(trop.Rahu - ayanamsa) },
-        { shortTa: "கே", nameTa: "கேது", nameEn: "Ketu", sid: mod360(trop.Ketu - ayanamsa) }
+        { shortTa: "கே", nameTa: "கேது", nameEn: "Ketu", sid: mod360(trop.Ketu - ayanamsa) },
+        { shortTa: "ம", nameTa: "மாந்தி", nameEn: "Mandhi", sid: mandhiSid }
       ];
       const placements = order.map((item) => ({ shortTa: item.shortTa, nameTa: item.nameTa, nameEn: item.nameEn, ...describeLon(item.sid) }));
       const lagnaIdx = placements[0].rasiIdx, rasiIdx = placements[2].rasiIdx;
@@ -594,6 +647,17 @@
         lagnaIdx, rasiIdx, nakIdx: placements[2].nakIdx, pada: placements[2].pada,
         moonDegInNak: placements[2].lon % (360 / 27), placements
       };
+    }
+    function syncFormToRecord(record) {
+      if (!record) return;
+      document.getElementById("nameInput").value = record.name === "Unnamed" ? "" : record.name;
+      document.getElementById("genderSelect").value = record.gender || "ஆண்";
+      document.getElementById("dateInput").value = record.dateStr;
+      document.getElementById("timeInput").value = record.timeStr;
+      document.getElementById("townSearchInput").value = record.placeName;
+      document.getElementById("latInput").value = record.lat;
+      document.getElementById("lonInput").value = record.lon;
+      updateBirthTamilDateBar();
     }
     function testBirthChartPreview() {
       sampleTestRecord = computeAstroData({
@@ -612,14 +676,8 @@
     }
     function loadTestChartIntoForm() {
       if (!sampleTestRecord) testBirthChartPreview();
-      document.getElementById("nameInput").value = sampleTestRecord.name;
-      document.getElementById("genderSelect").value = sampleTestRecord.gender;
-      document.getElementById("dateInput").value = sampleTestRecord.dateStr;
-      document.getElementById("timeInput").value = sampleTestRecord.timeStr;
-      document.getElementById("townSearchInput").value = sampleTestRecord.placeName;
-      document.getElementById("latInput").value = sampleTestRecord.lat;
-      document.getElementById("lonInput").value = sampleTestRecord.lon;
-      runCalculation(false);
+      syncFormToRecord(sampleTestRecord);
+      renderChartTab(sampleTestRecord);
     }
     function updateBirthTamilDateBar() {
       const dateStr = document.getElementById("dateInput").value || "1976-09-27";
@@ -643,7 +701,7 @@
       const sunriseClockStr = sun.sunriseDate ? formatIstClock(sun.sunriseDate) : "06:15:00";
       const rec = computeAstroData({ name: "Panchangam", gender: "ஆண்", dateStr, timeStr: sunriseClockStr, lat, lon, placeName });
       const tc = rec.tamilCalendar;
-      const weekday = new Date(Date.UTC(year, month - 1, day, 12, 0, 0)).getUTCDay();
+      const weekday = new Date(getIstMidnightUtcMs(year, month, day) + 12 * 3600 * 1000 + IST_OFFSET_MS).getUTCDay();
       const rahuSlot = [8, 2, 7, 5, 6, 4, 3][weekday], yamaSlot = [5, 4, 3, 2, 1, 7, 6][weekday], kuliSlot = [7, 6, 5, 4, 3, 2, 1][weekday];
       const partMs = rec.sunriseMs && rec.sunsetMs && rec.sunsetMs > rec.sunriseMs ? (rec.sunsetMs - rec.sunriseMs) / 8 : null;
       const slotRange = (slot) => partMs ? `${formatIstClock(new Date(rec.sunriseMs + (slot - 1) * partMs))} – ${formatIstClock(new Date(rec.sunriseMs + slot * partMs))}` : "N/A";
@@ -662,20 +720,23 @@
         <tr><td><strong>குளிகை</strong></td><td>${slotRange(kuliSlot)}</td></tr>
       </tbody></table>`;
     }
-    function buildSouthIndianGridHtml(centerTitle, subText, placements, fieldKey) {
+    function buildSouthIndianGridInnerHtml(centerTitle, subText, placements, fieldKey) {
       const cells = [`<div class="si-box si-center"><div>${centerTitle}</div><div style="font-size:10px;font-weight:500;margin-top:2px;">${subText}</div></div>`];
       OUTER_CELLS.forEach(({ gridCol, gridRow, rasiIdx }) => {
         const list = placements.filter((p) => p[fieldKey] === rasiIdx).map((p) => p.shortTa).join(", ");
         cells.push(`<div class="si-box" style="grid-column:${gridCol};grid-row:${gridRow};"><div class="si-title">${RASI_TA[rasiIdx]}</div><div class="si-graha">${list || "-"}</div></div>`);
       });
-      return `<div class="si-grid">${cells.join("")}</div>`;
+      return cells.join("");
+    }
+    function buildSouthIndianGridHtml(centerTitle, subText, placements, fieldKey) {
+      return `<div class="si-grid">${buildSouthIndianGridInnerHtml(centerTitle, subText, placements, fieldKey)}</div>`;
     }
     function buildTharabalaHtml(birthNakIdx) {
       const rows = TARA_INFO.map((t, idx) => `<tr><td><strong>${t.name}</strong></td><td>${NAKSHATRA_TA[(birthNakIdx + idx) % 27]}</td><td>${t.tip}</td></tr>`).join("");
       return `<div style="font-size:12px;font-weight:700;color:#0969da;">தாரபல அட்டவணை (9 Taras from ${NAKSHATRA_TA[birthNakIdx]})</div><table class="data-table"><thead><tr><th>தாரை வகை</th><th>நட்சத்திரம்</th><th>குறிப்பு</th></tr></thead><tbody>${rows}</tbody></table>`;
     }
     function buildBhavaNotesHtml(record) {
-      const grahasOnly = record.placements.filter((p) => p.nameEn !== "Lagna");
+      const grahasOnly = record.placements.filter((p) => p.nameEn !== "Lagna" && p.nameEn !== "Mandhi");
       const byEngName = Object.fromEntries(grahasOnly.map((p) => [p.nameEn, p]));
       const rows = grahasOnly.map((p) => {
         const pHouse = getHouseFromLagna(p.rasiIdx, record.lagnaIdx);
@@ -688,6 +749,7 @@
     }
     function renderChartTab(record) {
       latestRecord = record;
+      syncFormToRecord(record);
       const pan = record.panchang || getPanchangInfo(record.placements[1].lon, record.placements[2].lon, record.lagnaIdx, record.rasiIdx);
       const tc = record.tamilCalendar || getTamilCalendarDate(record.dateStr, record.placements[1].lon);
       const karakas = record.karakas || computeJaiminiKarakas(record.placements);
@@ -699,8 +761,8 @@
         `உதயம்: <strong>${record.sunriseStr}</strong> | அஸ்தமனம்: <strong>${record.sunsetStr}</strong><br/>` +
         `லக்னம்: <strong>${RASI_TA[record.lagnaIdx]}</strong> | ராசி: <strong>${RASI_TA[record.rasiIdx]}</strong> | நட்சத்திரம்: <strong>${NAKSHATRA_TA[record.nakIdx]}</strong> (${record.pada}ம் பாதம்)<br/>` +
         `திதி: <strong>${pan.tithiStr}</strong> | யோகம்: <strong>${pan.yogamStr}</strong> | கரணம்: <strong>${pan.karanamStr}</strong> | அயனம்: <strong>${pan.ayanam}</strong> | இந்து லக்னம்: <strong>${pan.indhuLagnaTa}</strong>`;
-      document.getElementById("rasiChart").outerHTML = `<div id="rasiChart">${buildSouthIndianGridHtml("ராசி கட்டம்", `${record.dateStr}<br/>${record.timeStr}`, record.placements, "rasiIdx")}</div>`;
-      document.getElementById("navamsaChart").outerHTML = `<div id="navamsaChart">${buildSouthIndianGridHtml("நவாம்சம்", `Ayanamsa: ${record.ayanamsa}°`, record.placements, "navRasiIdx")}</div>`;
+      document.getElementById("rasiChart").innerHTML = buildSouthIndianGridInnerHtml("ராசி கட்டம்", `${record.dateStr}<br/>${record.timeStr}`, record.placements, "rasiIdx");
+      document.getElementById("navamsaChart").innerHTML = buildSouthIndianGridInnerHtml("நவாம்சம்", `Ayanamsa: ${record.ayanamsa}°`, record.placements, "navRasiIdx");
       document.getElementById("degreeTableWrap").innerHTML = `<table class="data-table"><thead><tr><th>கிரகம்</th><th>பாகை</th><th>ராசி</th><th>நட்சத்திரம்</th><th>பாதம்</th><th>நவாம்சம்</th></tr></thead><tbody>${record.placements.map((p) => `<tr><td>${p.nameTa} (${p.shortTa})</td><td>${p.lon.toFixed(2)}°</td><td>${RASI_TA[p.rasiIdx]} (${p.degInRasi.toFixed(1)}°)</td><td>${NAKSHATRA_TA[p.nakIdx]}</td><td>${p.pada}</td><td>${RASI_TA[p.navRasiIdx]}</td></tr>`).join("")}</tbody></table>`;
       document.getElementById("lagnaNotesBox").innerHTML = `<strong>முக்கிய ஜாதக குறிப்புகள் (${RASI_TA[record.lagnaIdx]} லக்னம்):</strong> லக்ன சுபர்: <strong>${ln.subar}</strong> | லக்ன பாபர்: <strong>${ln.papar}</strong> | சமர்: <strong>${ln.samar}</strong> | யோகர்: <strong>${ln.yogam}</strong> | பாதகர்: <strong>${ln.badhakam}</strong> | மாரகர்: <strong>${ln.marakam}</strong> | வைநாசிக தோஷ நட்சத்திரம்: <strong>${NAKSHATRA_TA[ln.vainashika]}</strong>`;
       document.getElementById("jaiminiBox").innerHTML = `<strong>ஜெய்மினி காரகர்கள்:</strong> ` + karakas.map((k) => `${k.karakaTa}: <strong>${k.grahaTa}</strong> (${k.degStr}°)`).join(" • ");
@@ -717,7 +779,7 @@
     }
     function openSrirangamSheet(record) {
       if (!record) return;
-      const istDay = new Date(jdToIstDate(record.jd).getTime() + 5.5 * 3600 * 1000);
+      const istDay = new Date(jdToIstDate(record.jd).getTime() + IST_OFFSET_MS);
       const tamilDays = ["ஞாயிறு கிழமை", "திங்கள் கிழமை", "செவ்வாய் கிழமை", "புதன் கிழமை", "வியாழன் கிழமை", "வெள்ளி கிழமை", "சனி கிழமை"];
       const dashaBal = getDashaBalanceInfo(record);
       const pan = record.panchang || getPanchangInfo(record.placements[1].lon, record.placements[2].lon, record.lagnaIdx, record.rasiIdx);
@@ -801,7 +863,7 @@
       document.getElementById("sheetOverlay").style.display = "block";
     }
     function formatDateDDMMYYYY(dateObj) {
-      const ist = new Date(dateObj.getTime() + 5.5 * 3600 * 1000);
+      const ist = new Date(dateObj.getTime() + IST_OFFSET_MS);
       return `${String(ist.getUTCDate()).padStart(2, "0")}-${String(ist.getUTCMonth() + 1).padStart(2, "0")}-${ist.getUTCFullYear()}`;
     }
     function renderAntardashaTable(bhuktiIdx) {
@@ -866,7 +928,8 @@
       document.getElementById("dashaTableWrap").innerHTML = `<table class="data-table"><thead><tr><th>தசா நாதன்</th><th>கால அளவு</th><th>தொடக்கம்</th><th>முடிவு</th></tr></thead><tbody>${dashaRows.join("")}</tbody></table>`;
       renderBhuktiTable(liveMahaIdx);
       if (record.sunriseMs && record.sunsetMs && record.sunsetMs > record.sunriseMs) {
-        const weekday = new Date(jdToIstDate(record.jd).getTime() + 5.5 * 3600 * 1000).getUTCDay(), tamilDays = ["ஞாயிறு", "திங்கள்", "செவ்வாய்", "புதன்", "வியாழன்", "வெள்ளி", "சனி"];
+        const [y, m, d] = record.dateStr.split("-").map(Number);
+        const weekday = new Date(getIstMidnightUtcMs(y, m, d) + 12 * 3600 * 1000 + IST_OFFSET_MS).getUTCDay(), tamilDays = ["ஞாயிறு", "திங்கள்", "செவ்வாய்", "புதன்", "வியாழன்", "வெள்ளி", "சனி"];
         const rahuSlot = [8, 2, 7, 5, 6, 4, 3][weekday], yamaSlot = [5, 4, 3, 2, 1, 7, 6][weekday], kuliSlot = [7, 6, 5, 4, 3, 2, 1][weekday], partMs = (record.sunsetMs - record.sunriseMs) / 8;
         const slotRange = (slot) => `${formatIstClock(new Date(record.sunriseMs + (slot - 1) * partMs))} – ${formatIstClock(new Date(record.sunriseMs + slot * partMs))}`;
         document.getElementById("kaalamSummary").innerHTML = `தேதி: <strong>${record.dateStr}</strong> (${tamilDays[weekday]}) | உதயம்: <strong>${record.sunriseStr}</strong> | அஸ்தமனம்: <strong>${record.sunsetStr}</strong>`;
@@ -927,7 +990,7 @@
     document.getElementById("loadTestChartBtn").addEventListener("click", loadTestChartIntoForm);
     document.getElementById("calcPanBtn").addEventListener("click", renderPanchangamTab);
     document.getElementById("todayPanBtn").addEventListener("click", () => {
-      const nowIst = new Date(Date.now() + 5.5 * 3600 * 1000);
+      const nowIst = new Date(Date.now() + IST_OFFSET_MS);
       document.getElementById("panDateInput").value = nowIst.toISOString().slice(0, 10);
       renderPanchangamTab();
     });
