@@ -205,7 +205,7 @@
   </div>
 
   <script>
-    const STORAGE_KEY = "tamil_astro_joined_v11_profiles";
+    const STORAGE_KEY = "tamil_astro_joined_v12_profiles";
     const DEG2RAD = Math.PI / 180;
     const RAD2DEG = 180 / Math.PI;
     const MS_PER_DAY = 86400000;
@@ -220,6 +220,12 @@
     const RASI_LORD_TA = ["செவ்வாய்", "சுக்கிரன்", "புதன்", "சந்திரன்", "சூரியன்", "புதன்", "சுக்கிரன்", "செவ்வாய்", "குரு", "சனி", "சனி", "குரு"];
     const RASI_LORD_IDX = [2, 6, 3, 1, 0, 3, 6, 2, 4, 5, 5, 4];
     const GRAHA_TA = ["சூரியன்", "சந்திரன்", "செவ்வாய்", "புதன்", "குரு", "சுக்கிரன்", "சனி", "ராகு", "கேது"];
+    const SEVEN_GRAHA_KEYS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"];
+    const SPECIAL_ASPECTS = {
+      Mars: [4, 7, 8],
+      Jupiter: [5, 7, 9],
+      Saturn: [3, 7, 10]
+    };
     const TITHI_TA = ["பிரதமை", "துவிதியை", "திருதியை", "சதுர்த்தி", "பஞ்சமி", "சஷ்டி", "சப்தமி", "அஷ்டமி", "நவமி", "தசமி", "ஏகாதசி", "த்வாதசி", "திரயோதசி", "சதுர்தசி", "பௌர்ணமி / அமாவாசை"];
     const KARANAM_TA = ["பவம்", "பாலவம்", "கௌலவம்", "தைதுலம்", "கரசை", "வணிசை", "பத்ரை", "சகுனி", "சதுஷ்பாதம்", "நாகவம்", "கிம்ஸ்துக்னம்"];
     const KARAKA_TA = ["ஆத்மகாரகன்", "அமாத்திய காரகன்", "பத்திரி காரகன்", "மாத்ரு காரகன்", "புத்ர காரகன்", "ஜனத்தி காரகன்", "தார காரகன்"];
@@ -301,6 +307,10 @@
       document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === tabId));
       document.querySelectorAll(".tab-panel").forEach((p) => p.classList.toggle("active", p.id === tabId));
       if (tabId === "tab-dasha") renderDashaAndKaalam(latestRecord);
+    }
+
+    function getHouseFromLagna(rasiIdx, lagnaIdx) {
+      return ((rasiIdx - lagnaIdx + 12) % 12) + 1;
     }
 
     function toJulianDay(year, month, day, hourUT) {
@@ -408,55 +418,123 @@
       };
     }
     function computeJaiminiKarakas(placements) {
-      const sevenNames = new Set(["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]);
+      const sevenSet = new Set(SEVEN_GRAHA_KEYS);
       return placements
-        .filter((p) => sevenNames.has(p.nameEn))
+        .filter((p) => sevenSet.has(p.nameEn))
         .slice()
         .sort((a, b) => b.degInRasi - a.degInRasi)
         .map((p, idx) => ({ karakaTa: KARAKA_TA[idx], grahaTa: p.nameTa, degStr: p.degInRasi.toFixed(2) }));
     }
     function computeDoshas(placements, lagnaIdx, rasiIdx) {
-      const mars = placements.find((p) => p.nameEn === "Mars");
-      const sat = placements.find((p) => p.nameEn === "Saturn");
-      const rahu = placements.find((p) => p.nameEn === "Rahu");
-      const ketu = placements.find((p) => p.nameEn === "Ketu");
-      const sun = placements.find((p) => p.nameEn === "Sun");
-      const moon = placements.find((p) => p.nameEn === "Moon");
-      const houseFrom = (targetRasi, baseRasi) => ((targetRasi - baseRasi + 12) % 12) + 1;
-      const kujaHouses = [2, 4, 7, 8, 12];
-      const kujaFromLagna = kujaHouses.includes(houseFrom(mars.rasiIdx, lagnaIdx));
-      const kujaFromMoon = kujaHouses.includes(houseFrom(mars.rasiIdx, rasiIdx));
-      const rahuKetuAxis = rahu.rasiIdx === ketu.rasiIdx || ((rahu.rasiIdx + 6) % 12) === ketu.rasiIdx;
-      const satFromLagna = houseFrom(sat.rasiIdx, lagnaIdx);
-      const satFromMoon = houseFrom(sat.rasiIdx, rasiIdx);
-      const allBetweenRahuKetu = placements
-        .filter((p) => !["Lagna", "Rahu", "Ketu"].includes(p.nameEn))
-        .every((p) => {
-          const span = mod360(p.lon - rahu.lon);
-          return span > 0 && span < 180;
-        });
+      const getPlanet = (nameEn) => placements.find((p) => p.nameEn === nameEn);
+      const mars = getPlanet("Mars");
+      const sat = getPlanet("Saturn");
+      const rahu = getPlanet("Rahu");
+      const ketu = getPlanet("Ketu");
+      const sun = getPlanet("Sun");
+      const moon = getPlanet("Moon");
+      const jup = getPlanet("Jupiter");
+
+      const mFromLagna = getHouseFromLagna(mars.rasiIdx, lagnaIdx);
+      const mFromMoon = getHouseFromLagna(mars.rasiIdx, rasiIdx);
+      const kujaHit = [2, 4, 7, 8, 12].includes(mFromLagna) || [2, 4, 7, 8, 12].includes(mFromMoon);
+      const marsOwnOrExalt = [0, 7, 9].includes(mars.rasiIdx);
+      const kujaStatus = !kujaHit ? "இல்லை" : (marsOwnOrExalt ? "நிவர்த்தி / கவனம்" : "உண்டு");
+
+      const rHouse = getHouseFromLagna(rahu.rasiIdx, lagnaIdx);
+      const kHouse = getHouseFromLagna(ketu.rasiIdx, lagnaIdx);
+      const rahuMoonLink =
+        rahu.rasiIdx === moon.rasiIdx ||
+        ketu.rasiIdx === moon.rasiIdx ||
+        getHouseFromLagna(moon.rasiIdx, rahu.rasiIdx) === 7;
+      const nagaHit = [1, 4, 5, 7, 9, 10].includes(rHouse) || [1, 4, 5, 7, 9, 10].includes(kHouse) || rahuMoonLink;
+
+      const moonSatDiff = getHouseFromLagna(sat.rasiIdx, moon.rasiIdx);
+      const punarpuHit = moonSatDiff === 1 || moonSatDiff === 7;
+
+      const sFromLagna = getHouseFromLagna(sat.rasiIdx, lagnaIdx);
+      const sFromMoon = getHouseFromLagna(sat.rasiIdx, rasiIdx);
+      const shaniHit = sFromLagna === 8 || [12, 1, 2, 8].includes(sFromMoon);
+
+      const sFromRahu = getHouseFromLagna(sun.rasiIdx, rahu.rasiIdx);
+      const sunFromLagna = getHouseFromLagna(sun.rasiIdx, lagnaIdx);
+      const pitruHit = sFromRahu === 1 || sFromRahu === 7 || sunFromLagna === 9;
+
+      const sevenGrahas = SEVEN_GRAHA_KEYS.map(getPlanet).filter(Boolean);
+      const arcSpan = mod360(ketu.lon - rahu.lon);
+      const revSpan = mod360(rahu.lon - ketu.lon);
+      const allOnRahuToKetu = sevenGrahas.every((p) => {
+        const d = mod360(p.lon - rahu.lon);
+        return d > 0.01 && d < arcSpan - 0.01;
+      });
+      const allOnKetuToRahu = sevenGrahas.every((p) => {
+        const d = mod360(p.lon - ketu.lon);
+        return d > 0.01 && d < revSpan - 0.01;
+      });
+      const kalaSarpaHit = allOnRahuToKetu || allOnKetuToRahu;
+
+      const jupRelief = jup && [1, 4, 7, 10].includes(getHouseFromLagna(jup.rasiIdx, lagnaIdx)) ? " (குரு கேந்திரம்)" : "";
+
       return [
-        { name: "1. செவ்வாய் தோஷம்", status: (kujaFromLagna || kujaFromMoon) ? "உண்டு" : "இல்லை", note: `லக்னத்தில் இருந்து ${houseFrom(mars.rasiIdx, lagnaIdx)}ம் இடம், சந்திரனில் இருந்து ${houseFrom(mars.rasiIdx, rasiIdx)}ம் இடம்` },
-        { name: "2. நாக / சர்ப்ப தோஷம்", status: rahuKetuAxis ? "உண்டு" : "இல்லை", note: `ராகு (${RASI_TA[rahu.rasiIdx]}) / கேது (${RASI_TA[ketu.rasiIdx]}) நிலை` },
-        { name: "3. புனர்பூ தோஷம்", status: (moon.rasiIdx === sat.rasiIdx || Math.abs(moon.nakIdx - sat.nakIdx) === 1) ? "உண்டு" : "இல்லை", note: `சந்திரன் (${RASI_TA[moon.rasiIdx]}) & சனி (${RASI_TA[sat.rasiIdx]}) தொடர்பு` },
-        { name: "4. சனி தோஷம்", status: [1, 4, 7, 8, 10, 12].includes(satFromMoon) ? "கவனம்" : "இல்லை", note: `லக்னத்திற்கு ${satFromLagna}ம் இடம், ராசிக்கு ${satFromMoon}ம் இடம்` },
-        { name: "5. பித்ரு தோஷம்", status: (sun.rasiIdx === rahu.rasiIdx || sun.rasiIdx === ketu.rasiIdx || houseFrom(sun.rasiIdx, lagnaIdx) === 9) ? "கவனம்" : "இல்லை", note: `சூரியன் (${RASI_TA[sun.rasiIdx]}) மற்றும் 9ம் பாவ நிலை` },
-        { name: "6. காலசர்ப்ப தோஷம்", status: allBetweenRahuKetu ? "உண்டு" : "இல்லை", note: "ராகு-கேது அச்சுக்கு ஒருபுறம் கிரக அமைப்பு" }
+        {
+          name: "1. செவ்வாய் தோஷம்",
+          status: kujaStatus,
+          note: `லக்னத்திற்கு ${mFromLagna}ம், ராசிக்கு ${mFromMoon}ம்${marsOwnOrExalt ? " (ஆட்சி/உச்சம்)" : ""}`
+        },
+        {
+          name: "2. நாக / சர்ப்ப தோஷம்",
+          status: nagaHit ? "உண்டு" : "இல்லை",
+          note: `ராகு ${rHouse}ம், கேது ${kHouse}ம்${rahuMoonLink ? " • சந்திர தொடர்பு" : ""}`
+        },
+        {
+          name: "3. புனர்பூ தோஷம்",
+          status: punarpuHit ? "உண்டு" : "இல்லை",
+          note: `சந்திரன் (${RASI_TA[moon.rasiIdx]}) – சனி (${RASI_TA[sat.rasiIdx]}) ${moonSatDiff === 1 ? "சேர்க்கை" : moonSatDiff === 7 ? "7ம் பார்வை" : "தொடர்பு இல்லை"}`
+        },
+        {
+          name: "4. சனி தோஷம்",
+          status: shaniHit ? "கவனம்" : "இல்லை",
+          note: `லக்னத்திற்கு ${sFromLagna}ம், ராசிக்கு ${sFromMoon}ம்${jupRelief}`
+        },
+        {
+          name: "5. பித்ரு தோஷம்",
+          status: pitruHit ? "கவனம்" : "இல்லை",
+          note: `சூரியன் ${RASI_TA[sun.rasiIdx]} (${sunFromLagna}ம் பாவம்)`
+        },
+        {
+          name: "6. காலசர்ப்ப தோஷம்",
+          status: kalaSarpaHit ? "உண்டு" : "இல்லை",
+          note: kalaSarpaHit ? "ராகு–கேது அச்சுக்குள் கிரகங்கள்" : "கிரகங்கள் பிரிந்துள்ளன"
+        }
       ];
     }
-    function computeAspects(placements) {
+    function computeAspects(placements, lagnaIdx) {
+      const grahasOnly = placements.filter((p) => p.nameEn !== "Lagna");
       const items = [];
-      for (let i = 0; i < placements.length; i++) {
-        for (let j = 0; j < placements.length; j++) {
+      for (let i = 0; i < grahasOnly.length; i++) {
+        const src = grahasOnly[i];
+        const allowedAspects = SPECIAL_ASPECTS[src.nameEn] || [7];
+        const srcHouse = getHouseFromLagna(src.rasiIdx, lagnaIdx);
+
+        for (let j = 0; j < grahasOnly.length; j++) {
           if (i === j) continue;
-          const src = placements[i], dst = placements[j];
+          const dst = grahasOnly[j];
+          const isRahuKetuPair =
+            (src.nameEn === "Rahu" && dst.nameEn === "Ketu") ||
+            (src.nameEn === "Ketu" && dst.nameEn === "Rahu");
+          if (isRahuKetuPair) continue;
+
           const houseDiff = ((dst.rasiIdx - src.rasiIdx + 12) % 12) + 1;
-          if (houseDiff === 7) {
-            const srcHouse = ((src.rasiIdx - placements[0].rasiIdx + 12) % 12) + 1;
-            const dstHouse = ((dst.rasiIdx - placements[0].rasiIdx + 12) % 12) + 1;
+          if (allowedAspects.includes(houseDiff)) {
+            const dstHouse = getHouseFromLagna(dst.rasiIdx, lagnaIdx);
             items.push({
-              srcShort: src.shortTa, srcHouse, aspectNum: 7, dstShort: dst.shortTa, dstHouse,
-              sentence: `${src.shortTa} ${srcHouse}ம் வீட்டில் இருந்து தன் 7ம் பார்வையால் ${dstHouse}ம் வீட்டில் உள்ள ${dst.nameTa}யை பார்க்கிறார்.`
+              srcShort: src.shortTa,
+              srcHouse,
+              aspectNum: houseDiff,
+              dstShort: dst.shortTa,
+              dstName: dst.nameTa,
+              dstHouse,
+              sentence: `${src.shortTa} ${srcHouse}ம் வீட்டில் இருந்து தன் ${houseDiff}ம் பார்வையால் ${dstHouse}ம் வீட்டில் உள்ள ${dst.nameTa}யை பார்க்கிறார்.`
             });
           }
         }
@@ -493,7 +571,7 @@
         panchang: getPanchangInfo(sunSid, moonSid, lagnaIdx, rasiIdx),
         karakas: computeJaiminiKarakas(placements),
         doshas: computeDoshas(placements, lagnaIdx, rasiIdx),
-        aspects: computeAspects(placements),
+        aspects: computeAspects(placements, lagnaIdx),
         lagnaIdx, rasiIdx, nakIdx: placements[2].nakIdx, pada: placements[2].pada,
         moonDegInNak: placements[2].lon % (360 / 27), placements
       };
@@ -514,15 +592,22 @@
       return `<div style="font-size:12px;font-weight:700;color:#0969da;">தாரபல அட்டவணை (9 Taras from ${NAKSHATRA_TA[birthNakIdx]})</div><table class="data-table"><thead><tr><th>தாரை வகை</th><th>நட்சத்திரம்</th><th>குறிப்பு</th></tr></thead><tbody>${rows}</tbody></table>`;
     }
     function buildBhavaNotesHtml(record) {
-      const rows = record.placements.slice(1).map((p) => {
-        const pHouse = ((p.rasiIdx - record.lagnaIdx + 12) % 12) + 1;
-        const lordIdx = RASI_LORD_IDX[p.rasiIdx];
-        const lordPlacement = record.placements.find((pl) => pl.nameEn === ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"][lordIdx]);
-        const lordHouse = lordPlacement ? ((lordPlacement.rasiIdx - record.lagnaIdx + 12) % 12) + 1 : 1;
-        return `<div><strong>${RASI_TA[p.rasiIdx]} ${p.shortTa} நிற்க ${pHouse}ம் அதிபதி ${lordHouse}ம் இல்.</strong><br/>` +
+      const grahasOnly = record.placements.filter((p) => p.nameEn !== "Lagna");
+      const byEngName = Object.fromEntries(grahasOnly.map((p) => [p.nameEn, p]));
+
+      const rows = grahasOnly.map((p) => {
+        const pHouse = getHouseFromLagna(p.rasiIdx, record.lagnaIdx);
+        const lordEng = SEVEN_GRAHA_KEYS[RASI_LORD_IDX[p.rasiIdx]];
+        const lordPlacement = byEngName[lordEng];
+        const lordHouse = lordPlacement ? getHouseFromLagna(lordPlacement.rasiIdx, record.lagnaIdx) : 1;
+
+        return (
+          `<div><strong>${RASI_TA[p.rasiIdx]} ${p.shortTa} நிற்க ${pHouse}ம் அதிபதி ${lordHouse}ம் இல்.</strong><br/>` +
           `${pHouse}ம் பாவகம் :- (${BHAVA_MEANINGS_TA[pHouse - 1]})<br/>` +
-          `${lordHouse}ம் பாவகம் :- (${BHAVA_MEANINGS_TA[lordHouse - 1]})</div>`;
+          `${lordHouse}ம் பாவகம் :- (${BHAVA_MEANINGS_TA[lordHouse - 1]})</div>`
+        );
       }).join("<hr style='border:0;border-top:1px solid #eaeef2;margin:6px 0;'/>");
+
       return `<details class="opt-box"><summary><strong>ஜோதிட அடிப்படை தகவல்கள் (Bhava &amp; Lord Notes)</strong></summary><div style="margin-top:8px;">${rows}</div></details>`;
     }
     function renderChartTab(record) {
@@ -531,7 +616,7 @@
       const karakas = record.karakas || computeJaiminiKarakas(record.placements);
       const ln = LAGNA_NOTES[record.lagnaIdx];
       const doshas = record.doshas || computeDoshas(record.placements, record.lagnaIdx, record.rasiIdx);
-      const aspects = record.aspects || computeAspects(record.placements);
+      const aspects = record.aspects || computeAspects(record.placements, record.lagnaIdx);
       document.getElementById("summaryBox").innerHTML =
         `<strong>${record.name}</strong> (${record.gender || "ஆண்"} • ${record.placeName}) — உதயம்: <strong>${record.sunriseStr}</strong> | அஸ்தமனம்: <strong>${record.sunsetStr}</strong><br/>` +
         `லக்னம்: <strong>${RASI_TA[record.lagnaIdx]}</strong> | ராசி: <strong>${RASI_TA[record.rasiIdx]}</strong> | நட்சத்திரம்: <strong>${NAKSHATRA_TA[record.nakIdx]}</strong> (${record.pada}ம் பாதம்)<br/>` +
@@ -549,10 +634,10 @@
         `<strong>ஜெய்மினி காரகர்கள்:</strong> ` + karakas.map((k) => `${k.karakaTa}: <strong>${k.grahaTa}</strong> (${k.degStr}°)`).join(" • ");
       document.getElementById("doshaTableWrap").innerHTML =
         `<div style="font-size:12px;font-weight:700;color:#0969da;">தோஷங்களின் விவரம்</div><table class="data-table"><thead><tr><th>தோஷத்தின் பெயர்</th><th>நிலை</th><th>குறிப்பு</th></tr></thead><tbody>${
-          doshas.map((d) => `<tr><td>${d.name}</td><td><span class="${d.status === "இல்லை" ? "badge-ok" : (d.status === "கவனம்" ? "badge-warn" : "badge-no")}">${d.status}</span></td><td>${d.note}</td></tr>`).join("")
+          doshas.map((d) => `<tr><td>${d.name}</td><td><span class="${d.status === "இல்லை" ? "badge-ok" : (d.status === "கவனம்" || d.status === "நிவர்த்தி / கவனம்" ? "badge-warn" : "badge-no")}">${d.status}</span></td><td>${d.note}</td></tr>`).join("")
         }</tbody></table>`;
       document.getElementById("drishtiTableWrap").innerHTML =
-        `<div style="font-size:12px;font-weight:700;color:#0969da;">கிரங்களின் பார்வை விவரம் (7ம் பார்வை)</div><table class="data-table"><thead><tr><th>கிரகம்</th><th>நீ.இடம்</th><th>பார்வை</th><th>பார்க்கும் இடம்</th></tr></thead><tbody>${
+        `<div style="font-size:12px;font-weight:700;color:#0969da;">கிரங்களின் பார்வை விவரம் (3,4,5,7,8,9,10ம் பார்வை)</div><table class="data-table"><thead><tr><th>கிரகம்</th><th>நீ.இடம்</th><th>பார்வை</th><th>பார்க்கும் இடம்</th></tr></thead><tbody>${
           aspects.map((a) => `<tr><td>${a.srcShort}</td><td>${a.srcHouse}</td><td>${a.aspectNum}</td><td>${a.dstShort} (${a.dstHouse})</td></tr>`).join("")
         }</tbody></table>` +
         (aspects.length ? `<div class="mini-box">${aspects.map((a) => `• ${a.sentence}`).join("<br/>")}</div>` : "");
