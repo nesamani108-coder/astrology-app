@@ -5,28 +5,127 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tamil Astrology App (5 Tabs • Live Minute Panchangam • Gowri • Hora • PDF)</title>
   <style>
-    * { box-sizing: border-box; }
-    body { font-family: system-ui, -apple-system, sans-serif; margin: 10px; background: #f3f5f8; color: #1b1f24; }
-    .app-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
-    .app-title { font-size: 18px; font-weight: 700; margin: 0; }
-    .tab-bar { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-bottom: 12px; }
-    .tab-btn {
-      padding: 8px 4px; border: 1px solid #8c959f; background: #fff; color: #1b1f24;
-      border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; text-align: center;
+    :root {
+      --bg: #f3f5f8;
+      --surface: #ffffff;
+      --border: #d0d7de;
+      --text: #1b1f24;
+      --muted: #57606a;
+      --accent: #1f6feb;
+      --pad: clamp(10px, 2.2vw, 20px);
+      --card-pad: clamp(10px, 2vw, 16px);
+      --fs-body: clamp(12.5px, 1vw + 9px, 14px);
+      --fs-title: clamp(16px, 1.8vw + 10px, 22px);
+      --fs-tab: clamp(10.5px, 0.9vw + 8px, 13px);
     }
-    .tab-btn.active { background: #1f6feb; color: #fff; border-color: #1f6feb; }
-    .tab-panel { display: none; }
+    body.compact-mode {
+      --pad: clamp(6px, 1.2vw, 10px);
+      --card-pad: clamp(7px, 1.2vw, 10px);
+      --fs-body: clamp(11.5px, 0.8vw + 8.5px, 12.5px);
+      --fs-title: clamp(14.5px, 1.4vw + 9px, 18px);
+      --fs-tab: clamp(10px, 0.8vw + 7.5px, 11.5px);
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0 auto;
+      max-width: 1140px;
+      padding: var(--pad);
+      background: var(--bg);
+      color: var(--text);
+      font-size: var(--fs-body);
+      line-height: 1.45;
+      overflow-x: hidden;
+    }
+    body.compact-mode .card { margin-bottom: 8px; }
+    body.compact-mode .tab-bar { margin-bottom: 8px; gap: 4px; }
+    body.compact-mode .tab-btn { padding: 6px 5px; }
+    body.compact-mode table.data-table th,
+    body.compact-mode table.data-table td { padding: 4px 6px; font-size: 11px; }
+    body.compact-mode .si-grid { grid-template-rows: repeat(4, minmax(46px, auto)); gap: 3px; }
+
+    .app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      margin-bottom: 10px;
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .app-title { font-size: var(--fs-title); font-weight: 700; margin: 0; }
+    .app-sub { font-size: clamp(11px, 0.9vw + 8px, 12.5px); color: var(--muted); }
+
+    .tab-bar {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: clamp(4px, 1vw, 8px);
+      margin-bottom: 12px;
+    }
+    .tab-btn {
+      padding: clamp(7px, 1.2vw, 10px) 6px;
+      border: 1px solid #8c959f;
+      background: var(--surface);
+      color: var(--text);
+      border-radius: 8px;
+      font-size: var(--fs-tab);
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    .tab-panel { display: none; min-width: 0; }
     .tab-panel.active { display: block; }
-    .card { background: #fff; border: 1px solid #d0d7de; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
-    h3 { margin: 0 0 10px; font-size: 15px; }
-    h4 { margin: 12px 0 6px; font-size: 13px; color: #0969da; }
-    .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 10px; }
-    label { display: flex; flex-direction: column; font-size: 12px; font-weight: 600; gap: 4px; position: relative; }
-    input, select, button { padding: 8px 10px; border-radius: 6px; border: 1px solid #8c959f; font-size: 13px; }
-    button { background: #1f6feb; color: #fff; border: none; cursor: pointer; font-weight: 600; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: var(--card-pad);
+      margin-bottom: 12px;
+      min-width: 0;
+    }
+    h3 { margin: 0 0 10px; font-size: clamp(14.5px, 1.2vw + 10px, 17px); }
+    h4 { margin: 12px 0 6px; font-size: clamp(13px, 1vw + 9px, 14.5px); color: #0969da; }
+
+    .grid-form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: clamp(8px, 1.4vw, 14px);
+    }
+    .span-2 { grid-column: span 2; }
+    label {
+      display: flex;
+      flex-direction: column;
+      font-size: clamp(11.5px, 0.85vw + 8.5px, 12.5px);
+      font-weight: 600;
+      gap: 4px;
+      position: relative;
+      min-width: 0;
+    }
+    input, select, button {
+      padding: clamp(7px, 1vw, 9px) 10px;
+      border-radius: 6px;
+      border: 1px solid #8c959f;
+      font-size: clamp(12.5px, 0.9vw + 9px, 13.5px);
+      min-width: 0;
+      max-width: 100%;
+    }
+    button { background: var(--accent); color: #fff; border: none; cursor: pointer; font-weight: 600; }
     button.secondary { background: #57606a; }
     button.success { background: #1a7f37; }
     button.small { padding: 5px 8px; font-size: 12px; }
+
     .row-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; align-items: center; }
     .live-pill {
       display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px;
@@ -36,47 +135,84 @@
     .live-pill.paused { background: #fff8c5; color: #7d4e00; border-color: #d4a72c; }
     .minute-banner {
       background: #eef6ff; border: 1px solid #54aeff; border-radius: 8px;
-      padding: 10px; margin-top: 10px; font-size: 12px; line-height: 1.65;
+      padding: 10px; margin-top: 10px; font-size: var(--fs-body); line-height: 1.65;
+      overflow-wrap: anywhere;
     }
     .town-results {
       position: absolute; top: 100%; left: 0; right: 0; z-index: 30;
-      background: #fff; border: 1px solid #1f6feb; border-radius: 6px;
+      background: #fff; border: 1px solid var(--accent); border-radius: 6px;
       max-height: 200px; overflow-y: auto; box-shadow: 0 6px 16px rgba(0,0,0,0.14); display: none;
     }
     .town-item { padding: 7px 10px; font-size: 12px; cursor: pointer; border-bottom: 1px solid #eaeef2; text-align: left; }
     .town-item:hover { background: #eef6ff; }
-    .town-status { font-size: 11px; color: #57606a; margin-top: 5px; }
-    .charts-two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-top: 10px; }
-    .si-grid { display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, minmax(60px, auto)); gap: 4px; }
-    .si-box { border: 1px solid #57606a; padding: 4px; border-radius: 5px; background: #fafbfc; font-size: 11px; }
-    .si-title { font-weight: 700; color: #0969da; font-size: 10px; margin-bottom: 2px; }
-    .si-graha { font-weight: 700; color: #1f2328; font-size: 11px; line-height: 1.25; }
+    .town-status { font-size: 11px; color: var(--muted); margin-top: 5px; }
+
+    .charts-two-col {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: clamp(10px, 2vw, 18px);
+      margin-top: 10px;
+    }
+    .si-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-rows: repeat(4, minmax(clamp(54px, 8vw, 76px), auto));
+      gap: 4px;
+    }
+    .si-box {
+      border: 1px solid #57606a;
+      padding: 4px;
+      border-radius: 5px;
+      background: #fafbfc;
+      font-size: clamp(10px, 0.8vw + 7.5px, 11.5px);
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+    .si-title { font-weight: 700; color: #0969da; font-size: clamp(9.5px, 0.7vw + 7px, 10.5px); margin-bottom: 2px; }
+    .si-graha { font-weight: 700; color: #1f2328; font-size: clamp(10px, 0.85vw + 7.5px, 12px); line-height: 1.25; }
     .si-center {
       grid-column: 2 / 4; grid-row: 2 / 4;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      text-align: center; background: #eef6ff; font-weight: 700; font-size: 11px;
+      text-align: center; background: #eef6ff; font-weight: 700; font-size: clamp(10.5px, 0.85vw + 8px, 12px);
     }
-    .table-wrap { overflow-x: auto; margin-top: 10px; }
-    table.data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    table.data-table th, table.data-table td { border: 1px solid #d0d7de; padding: 5px 7px; text-align: left; }
+
+    .table-wrap { width: 100%; overflow-x: auto; margin-top: 10px; -webkit-overflow-scrolling: touch; }
+    table.data-table { width: 100%; border-collapse: collapse; font-size: clamp(11px, 0.85vw + 8px, 12.5px); min-width: 440px; }
+    table.data-table th, table.data-table td { border: 1px solid var(--border); padding: clamp(5px, 0.7vw, 7px) clamp(6px, 0.9vw, 9px); text-align: left; }
     table.data-table th { background: #f6f8fa; }
     tr.active-period { background: #dafbe1; font-weight: 600; }
-    tr.selected-row { outline: 2px solid #1f6feb; background: #eef6ff; }
+    tr.selected-row { outline: 2px solid var(--accent); background: #eef6ff; }
     .badge-ok { color: #1a7f37; font-weight: 700; }
     .badge-warn { color: #9a6700; font-weight: 700; }
     .badge-no { color: #cf222e; font-weight: 700; }
-    .badge-live { background: #1a7f37; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 4px; }
+    .badge-live { background: #1a7f37; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 4px; white-space: nowrap; }
+
     ul.saved-list { list-style: none; padding: 0; margin: 0; }
-    ul.saved-list li { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 0; border-bottom: 1px solid #eaeef2; font-size: 13px; }
+    ul.saved-list li { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 0; border-bottom: 1px solid #eaeef2; font-size: var(--fs-body); }
     .err-banner { background: #ffebe9; color: #cf222e; padding: 8px 10px; border-radius: 6px; margin-top: 8px; display: none; font-size: 12px; }
-    .mini-box { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px; padding: 8px 10px; margin-top: 10px; font-size: 12px; line-height: 1.5; }
+    .mini-box { background: #f6f8fa; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin-top: 10px; font-size: var(--fs-body); line-height: 1.5; overflow-wrap: anywhere; }
     details.opt-box { margin-top: 8px; border: 1px dashed #8c959f; border-radius: 6px; padding: 6px 10px; font-size: 12px; }
-    #sheetOverlay { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); z-index: 90; overflow-y: auto; padding: 12px; }
-    .jathagam-sheet { max-width: 780px; margin: 0 auto; background: #fff; border: 2px solid #24292f; border-radius: 6px; padding: 16px; color: #111; }
+
+    #sheetOverlay { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); z-index: 90; overflow-y: auto; padding: clamp(8px, 2vw, 18px); }
+    .jathagam-sheet { max-width: 820px; margin: 0 auto; background: #fff; border: 2px solid #24292f; border-radius: 6px; padding: clamp(12px, 2.2vw, 20px); color: #111; }
     .sheet-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
     .sheet-head { text-align: center; border-bottom: 2px solid #24292f; padding-bottom: 8px; margin-bottom: 10px; }
-    .sheet-meta-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 14px; font-size: 12px; margin-bottom: 10px; }
+    .sheet-meta-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 14px; font-size: 12px; margin-bottom: 10px; }
     .sheet-footer { margin-top: 10px; border-top: 1px solid #57606a; padding-top: 8px; font-size: 12px; line-height: 1.5; }
+
+    @media (max-width: 640px) {
+      .tab-bar { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .span-2 { grid-column: span 1; }
+      .charts-two-col { grid-template-columns: minmax(0, 1fr); }
+      .sheet-meta-grid { grid-template-columns: minmax(0, 1fr); }
+      .row-actions button, .row-actions .live-pill { flex: 1 1 auto; justify-content: center; }
+    }
+    @media (min-width: 641px) and (max-width: 900px) {
+      .grid-form { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (min-width: 960px) {
+      .grid-form { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
     @media print {
       body > *:not(#sheetOverlay) { display: none !important; }
       #sheetOverlay { position: static; background: none; padding: 0; display: block !important; }
@@ -88,7 +224,10 @@
 <body>
   <div class="app-header">
     <h1 class="app-title">தமிழ் ஜாதக &amp; பஞ்சாங்க செயலி</h1>
-    <span style="font-size:12px;color:#57606a;">5 Tabs • Live Minute Panchangam • Gowri • Hora • PDF</span>
+    <div class="header-right">
+      <button id="densityToggleBtn" class="secondary small" type="button">View: Normal</button>
+      <span class="app-sub">5 Tabs • Live Minute Panchangam • Gowri • Hora • PDF</span>
+    </div>
   </div>
 
   <div class="tab-bar" role="tablist">
@@ -146,7 +285,7 @@
         </label>
         <label>பிறந்த தேதி <input id="dateInput" type="date" value="1976-09-27" /></label>
         <label>நேரம் (IST) <input id="timeInput" type="time" step="1" value="03:35:00" /></label>
-        <label style="grid-column: span 2;">பிறந்த ஊர் தேடல் (Online Search)
+        <label class="span-2">பிறந்த ஊர் தேடல் (Online Search)
           <input id="townSearchInput" type="text" value="Virudhunagar, Tamil Nadu" placeholder="Type any town, taluk, or village..." autocomplete="off" />
           <div id="townResults" class="town-results"></div>
         </label>
@@ -259,7 +398,8 @@
   </div>
 
   <script>
-    const STORAGE_KEY = "tamil_astro_5tab_v20_limb_times";
+    const STORAGE_KEY = "tamil_astro_5tab_v22_responsive_hora_fix";
+    const DENSITY_KEY = "tamil_astro_screen_density_v1";
     const DEG2RAD = Math.PI / 180;
     const RAD2DEG = 180 / Math.PI;
     const MS_PER_DAY = 86400000;
@@ -296,7 +436,8 @@
     const GOWRI_DAY_START_IDX = [0, 1, 2, 3, 4, 5, 6];
     const GOWRI_NIGHT_START_IDX = [4, 5, 6, 0, 1, 2, 3];
 
-    const HORA_WEEKDAY_START_IDX = [0, 1, 2, 3, 4, 5, 6];
+    // Chaldean planetary order: Sun, Venus, Mercury, Moon, Saturn, Jupiter, Mars
+    const HORA_WEEKDAY_START_IDX = [0, 3, 6, 2, 5, 1, 4];
     const HORA_ORDER = [
       { nameTa: "சூரியன்", shortTa: "சூரி", good: false, tipTa: "அதிகாரம், அரசு/நிர்வாகம்" },
       { nameTa: "சுக்கிரன்", shortTa: "சுக்", good: true, tipTa: "கலை, பொருள், சுப காரியம்" },
@@ -397,6 +538,22 @@
     let currentSelectedBhuktiIdx = 0;
     let livePanchangTimer = null;
     let isLiveMinuteAuto = true;
+    let isCompactDensity = false;
+
+    function applyScreenDensity(compact) {
+      isCompactDensity = Boolean(compact);
+      document.body.classList.toggle("compact-mode", isCompactDensity);
+      const btn = document.getElementById("densityToggleBtn");
+      if (btn) btn.textContent = isCompactDensity ? "View: Compact (7\"/Mobile)" : "View: Normal";
+      try { localStorage.setItem(DENSITY_KEY, isCompactDensity ? "compact" : "normal"); } catch {}
+    }
+
+    function initScreenDensity() {
+      let saved = "normal";
+      try { saved = localStorage.getItem(DENSITY_KEY) || "normal"; } catch {}
+      if (saved === "normal" && window.innerWidth <= 520) saved = "compact";
+      applyScreenDensity(saved === "compact");
+    }
 
     function switchTab(tabId) {
       document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === tabId));
@@ -673,6 +830,32 @@
       const eTxt = endMs ? formatIstShortStamp(new Date(endMs)) : "—";
       return `${sTxt} → ${eTxt} IST`;
     }
+    function getSolarDayCycle(dateStr, lat, lon, sunriseDate, sunsetDate) {
+      const [year, month, day] = dateStr.split("-").map(Number);
+      const weekday = new Date(getIstMidnightUtcMs(year, month, day) + 12 * 3600 * 1000 + IST_OFFSET_MS).getUTCDay();
+      const nextDate = new Date(Date.UTC(year, month - 1, day + 1));
+      const nextSun = calcSunriseSunsetIST(nextDate.getUTCFullYear(), nextDate.getUTCMonth() + 1, nextDate.getUTCDate(), lat, lon);
+      const prevDate = new Date(Date.UTC(year, month - 1, day - 1));
+      const prevSun = calcSunriseSunsetIST(prevDate.getUTCFullYear(), prevDate.getUTCMonth() + 1, prevDate.getUTCDate(), lat, lon);
+      const prevWeekday = new Date(getIstMidnightUtcMs(prevDate.getUTCFullYear(), prevDate.getUTCMonth() + 1, prevDate.getUTCDate()) + 12 * 3600 * 1000 + IST_OFFSET_MS).getUTCDay();
+
+      const riseMs = sunriseDate ? sunriseDate.getTime() : getIstMidnightUtcMs(year, month, day) + 6 * 3600 * 1000;
+      const setMs = sunsetDate ? sunsetDate.getTime() : riseMs + 12 * 3600 * 1000;
+      const nextRiseMs = nextSun.sunriseDate ? nextSun.sunriseDate.getTime() : riseMs + MS_PER_DAY;
+      const prevSetMs = prevSun.sunsetDate ? prevSun.sunsetDate.getTime() : riseMs - 12 * 3600 * 1000;
+
+      return {
+        weekday,
+        prevWeekday,
+        riseMs,
+        setMs,
+        nextRiseMs,
+        prevSetMs,
+        daySpanMs: setMs - riseMs,
+        nightSpanMs: nextRiseMs - setMs,
+        preDawnSpanMs: riseMs - prevSetMs
+      };
+    }
     function computeMinutePanchangSnapshot(dateStr, timeHHMM, lat, lon, sunriseDate, sunsetDate) {
       const [year, month, day] = dateStr.split("-").map(Number);
       const [hh, mm] = (timeHHMM || "00:00").split(":").map(Number);
@@ -718,16 +901,7 @@
       const karanaEndMs = findLimbBoundaryMs(targetUtcMs, "karana", 6, karanaState.slotIndex, 1);
       const karanaWindowStr = formatBoundaryWindow(karanaStartMs, karanaEndMs);
 
-      const weekday = new Date(getIstMidnightUtcMs(year, month, day) + 12 * 3600 * 1000 + IST_OFFSET_MS).getUTCDay();
-      const nextDate = new Date(Date.UTC(year, month - 1, day + 1));
-      const nextSun = calcSunriseSunsetIST(nextDate.getUTCFullYear(), nextDate.getUTCMonth() + 1, nextDate.getUTCDate(), lat, lon);
-
-      const riseMs = sunriseDate ? sunriseDate.getTime() : getIstMidnightUtcMs(year, month, day) + 6 * 3600 * 1000;
-      const setMs = sunsetDate ? sunsetDate.getTime() : riseMs + 12 * 3600 * 1000;
-      const nextRiseMs = nextSun.sunriseDate ? nextSun.sunriseDate.getTime() : riseMs + MS_PER_DAY;
-      const daySpanMs = setMs - riseMs;
-      const nightSpanMs = nextRiseMs - setMs;
-
+      const cyc = getSolarDayCycle(dateStr, lat, lon, sunriseDate, sunsetDate);
       let activeGowriLabel = "இரவு கௌரி";
       let activeGowriItem = GOWRI_CYCLE[0];
       let activeGowriRange = "";
@@ -735,43 +909,54 @@
       let activeHoraItem = HORA_ORDER[0];
       let activeHoraRange = "";
 
-      const horaStart = HORA_WEEKDAY_START_IDX[weekday];
-      if (targetUtcMs >= riseMs && targetUtcMs < setMs) {
-        const gIdx = Math.min(7, Math.max(0, Math.floor(((targetUtcMs - riseMs) / daySpanMs) * 8)));
-        const gStart = riseMs + gIdx * (daySpanMs / 8);
-        const gEnd = riseMs + (gIdx + 1) * (daySpanMs / 8);
-        activeGowriItem = GOWRI_CYCLE[(GOWRI_DAY_START_IDX[weekday] + gIdx) % 8];
+      if (targetUtcMs >= cyc.riseMs && targetUtcMs < cyc.setMs) {
+        const gIdx = Math.min(7, Math.max(0, Math.floor(((targetUtcMs - cyc.riseMs) / cyc.daySpanMs) * 8)));
+        const gStart = cyc.riseMs + gIdx * (cyc.daySpanMs / 8);
+        const gEnd = cyc.riseMs + (gIdx + 1) * (cyc.daySpanMs / 8);
+        activeGowriItem = GOWRI_CYCLE[(GOWRI_DAY_START_IDX[cyc.weekday] + gIdx) % 8];
         activeGowriLabel = `பகல் கௌரி #${gIdx + 1}`;
         activeGowriRange = `${formatIstClock(new Date(gStart))} – ${formatIstClock(new Date(gEnd))}`;
 
-        const hIdx = Math.min(11, Math.max(0, Math.floor(((targetUtcMs - riseMs) / daySpanMs) * 12)));
-        const hStart = riseMs + hIdx * (daySpanMs / 12);
-        const hEnd = riseMs + (hIdx + 1) * (daySpanMs / 12);
-        activeHoraItem = HORA_ORDER[(horaStart + hIdx) % 7];
+        const hIdx = Math.min(11, Math.max(0, Math.floor(((targetUtcMs - cyc.riseMs) / cyc.daySpanMs) * 12)));
+        const hStart = cyc.riseMs + hIdx * (cyc.daySpanMs / 12);
+        const hEnd = cyc.riseMs + (hIdx + 1) * (cyc.daySpanMs / 12);
+        activeHoraItem = HORA_ORDER[(HORA_WEEKDAY_START_IDX[cyc.weekday] + hIdx) % 7];
         activeHoraLabel = `பகல் ஹோரை #${hIdx + 1}`;
         activeHoraRange = `${formatIstClock(new Date(hStart))} – ${formatIstClock(new Date(hEnd))}`;
-      } else {
-        const nStartRef = targetUtcMs >= setMs ? setMs : (riseMs - 12 * 3600 * 1000);
-        const nSpanRef = targetUtcMs >= setMs ? nightSpanMs : (riseMs - nStartRef);
-        const gIdx = Math.min(7, Math.max(0, Math.floor(((targetUtcMs - nStartRef) / nSpanRef) * 8)));
-        const gStart = nStartRef + gIdx * (nSpanRef / 8);
-        const gEnd = nStartRef + (gIdx + 1) * (nSpanRef / 8);
-        activeGowriItem = GOWRI_CYCLE[(GOWRI_NIGHT_START_IDX[weekday] + gIdx) % 8];
+      } else if (targetUtcMs >= cyc.setMs) {
+        const gIdx = Math.min(7, Math.max(0, Math.floor(((targetUtcMs - cyc.setMs) / cyc.nightSpanMs) * 8)));
+        const gStart = cyc.setMs + gIdx * (cyc.nightSpanMs / 8);
+        const gEnd = cyc.setMs + (gIdx + 1) * (cyc.nightSpanMs / 8);
+        activeGowriItem = GOWRI_CYCLE[(GOWRI_NIGHT_START_IDX[cyc.weekday] + gIdx) % 8];
         activeGowriLabel = `இரவு கௌரி #${gIdx + 1}`;
         activeGowriRange = `${formatIstClock(new Date(gStart))} – ${formatIstClock(new Date(gEnd))}`;
 
-        const hIdx = Math.min(11, Math.max(0, Math.floor(((targetUtcMs - nStartRef) / nSpanRef) * 12)));
-        const hStart = nStartRef + hIdx * (nSpanRef / 12);
-        const hEnd = nStartRef + (hIdx + 1) * (nSpanRef / 12);
-        activeHoraItem = HORA_ORDER[(horaStart + 12 + hIdx) % 7];
+        const hIdx = Math.min(11, Math.max(0, Math.floor(((targetUtcMs - cyc.setMs) / cyc.nightSpanMs) * 12)));
+        const hStart = cyc.setMs + hIdx * (cyc.nightSpanMs / 12);
+        const hEnd = cyc.setMs + (hIdx + 1) * (cyc.nightSpanMs / 12);
+        activeHoraItem = HORA_ORDER[(HORA_WEEKDAY_START_IDX[cyc.weekday] + 12 + hIdx) % 7];
         activeHoraLabel = `இரவு ஹோரை #${hIdx + 13}`;
+        activeHoraRange = `${formatIstClock(new Date(hStart))} – ${formatIstClock(new Date(hEnd))}`;
+      } else {
+        const gIdx = Math.min(7, Math.max(0, Math.floor(((targetUtcMs - cyc.prevSetMs) / cyc.preDawnSpanMs) * 8)));
+        const gStart = cyc.prevSetMs + gIdx * (cyc.preDawnSpanMs / 8);
+        const gEnd = cyc.prevSetMs + (gIdx + 1) * (cyc.preDawnSpanMs / 8);
+        activeGowriItem = GOWRI_CYCLE[(GOWRI_NIGHT_START_IDX[cyc.prevWeekday] + gIdx) % 8];
+        activeGowriLabel = `முந்தைய இரவு கௌரி #${gIdx + 1}`;
+        activeGowriRange = `${formatIstClock(new Date(gStart))} – ${formatIstClock(new Date(gEnd))}`;
+
+        const hIdx = Math.min(11, Math.max(0, Math.floor(((targetUtcMs - cyc.prevSetMs) / cyc.preDawnSpanMs) * 12)));
+        const hStart = cyc.prevSetMs + hIdx * (cyc.preDawnSpanMs / 12);
+        const hEnd = cyc.prevSetMs + (hIdx + 1) * (cyc.preDawnSpanMs / 12);
+        activeHoraItem = HORA_ORDER[(HORA_WEEKDAY_START_IDX[cyc.prevWeekday] + 12 + hIdx) % 7];
+        activeHoraLabel = `முந்தைய இரவு ஹோரை #${hIdx + 13}`;
         activeHoraRange = `${formatIstClock(new Date(hStart))} – ${formatIstClock(new Date(hEnd))}`;
       }
 
       return {
         targetUtcMs,
         clockLabel: `${String(safeH).padStart(2, "0")}:${String(safeM).padStart(2, "0")} IST`,
-        weekdayTa: TAMIL_DAYS_TA[weekday],
+        weekdayTa: TAMIL_DAYS_TA[cyc.weekday],
         tithiStr: `${TITHI_TA[tithiIdx]} (${paksha}) • ${tithiPct}%`,
         tithiWindowStr,
         nakStr: `${NAKSHATRA_TA[moonDesc.nakIdx]} (${moonDesc.pada}ம் பாதம்) • ${nakPct}%`,
@@ -931,30 +1116,20 @@
     }
     function buildGowriAndHoraHtml(dateStr, lat, lon, sunriseDate, sunsetDate, targetUtcMs) {
       const [year, month, day] = dateStr.split("-").map(Number);
-      const weekday = new Date(getIstMidnightUtcMs(year, month, day) + 12 * 3600 * 1000 + IST_OFFSET_MS).getUTCDay();
       const refMs = typeof targetUtcMs === "number" ? targetUtcMs : Date.now();
+      const cyc = getSolarDayCycle(dateStr, lat, lon, sunriseDate, sunsetDate);
 
-      const nextDate = new Date(Date.UTC(year, month - 1, day + 1));
-      const nextSun = calcSunriseSunsetIST(nextDate.getUTCFullYear(), nextDate.getUTCMonth() + 1, nextDate.getUTCDate(), lat, lon);
-
-      const riseMs = sunriseDate ? sunriseDate.getTime() : getIstMidnightUtcMs(year, month, day) + 6 * 3600 * 1000;
-      const setMs = sunsetDate ? sunsetDate.getTime() : riseMs + 12 * 3600 * 1000;
-      const nextRiseMs = nextSun.sunriseDate ? nextSun.sunriseDate.getTime() : riseMs + MS_PER_DAY;
-
-      const daySpanMs = setMs - riseMs;
-      const nightSpanMs = nextRiseMs - setMs;
-
-      const gowriDayStart = GOWRI_DAY_START_IDX[weekday];
-      const gowriNightStart = GOWRI_NIGHT_START_IDX[weekday];
+      const gowriDayStart = GOWRI_DAY_START_IDX[cyc.weekday];
+      const gowriNightStart = GOWRI_NIGHT_START_IDX[cyc.weekday];
       const gowriRows = [];
       for (let i = 0; i < 8; i++) {
-        const dStart = riseMs + i * (daySpanMs / 8);
-        const dEnd = riseMs + (i + 1) * (daySpanMs / 8);
+        const dStart = cyc.riseMs + i * (cyc.daySpanMs / 8);
+        const dEnd = cyc.riseMs + (i + 1) * (cyc.daySpanMs / 8);
         const dItem = GOWRI_CYCLE[(gowriDayStart + i) % 8];
         const dLive = refMs >= dStart && refMs < dEnd;
 
-        const nStart = setMs + i * (nightSpanMs / 8);
-        const nEnd = setMs + (i + 1) * (nightSpanMs / 8);
+        const nStart = cyc.setMs + i * (cyc.nightSpanMs / 8);
+        const nEnd = cyc.setMs + (i + 1) * (cyc.nightSpanMs / 8);
         const nItem = GOWRI_CYCLE[(gowriNightStart + i) % 8];
         const nLive = refMs >= nStart && refMs < nEnd;
 
@@ -967,16 +1142,16 @@
         `);
       }
 
-      const horaStart = HORA_WEEKDAY_START_IDX[weekday];
+      const horaStart = HORA_WEEKDAY_START_IDX[cyc.weekday];
       const horaRows = [];
       for (let i = 0; i < 12; i++) {
-        const dStart = riseMs + i * (daySpanMs / 12);
-        const dEnd = riseMs + (i + 1) * (daySpanMs / 12);
+        const dStart = cyc.riseMs + i * (cyc.daySpanMs / 12);
+        const dEnd = cyc.riseMs + (i + 1) * (cyc.daySpanMs / 12);
         const dHora = HORA_ORDER[(horaStart + i) % 7];
         const dLive = refMs >= dStart && refMs < dEnd;
 
-        const nStart = setMs + i * (nightSpanMs / 12);
-        const nEnd = setMs + (i + 1) * (nightSpanMs / 12);
+        const nStart = cyc.setMs + i * (cyc.nightSpanMs / 12);
+        const nEnd = cyc.setMs + (i + 1) * (cyc.nightSpanMs / 12);
         const nHora = HORA_ORDER[(horaStart + 12 + i) % 7];
         const nLive = refMs >= nStart && refMs < nEnd;
 
@@ -1450,6 +1625,7 @@
       document.getElementById("groomStarSelect").value = "10"; document.getElementById("groomRasiSelect").value = "4";
     }
 
+    document.getElementById("densityToggleBtn").addEventListener("click", () => applyScreenDensity(!isCompactDensity));
     document.getElementById("dateInput").addEventListener("change", updateBirthTamilDateBar);
     document.getElementById("latInput").addEventListener("change", updateBirthTamilDateBar);
     document.getElementById("lonInput").addEventListener("change", updateBirthTamilDateBar);
@@ -1533,6 +1709,7 @@
       reader.readAsText(file);
     });
 
+    initScreenDensity();
     initSelectors();
     renderSavedList(loadProfiles());
     updateBirthTamilDateBar();
