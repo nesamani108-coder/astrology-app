@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tamil Astrology App (5 Tabs • Mandhi • Panchangam • Balangal • PDF)</title>
+  <title>Tamil Astrology App (5 Tabs • Live Minute Panchangam • Gowri • Hora • PDF)</title>
   <style>
     * { box-sizing: border-box; }
     body { font-family: system-ui, -apple-system, sans-serif; margin: 10px; background: #f3f5f8; color: #1b1f24; }
@@ -19,6 +19,7 @@
     .tab-panel.active { display: block; }
     .card { background: #fff; border: 1px solid #d0d7de; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
     h3 { margin: 0 0 10px; font-size: 15px; }
+    h4 { margin: 12px 0 6px; font-size: 13px; color: #0969da; }
     .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 10px; }
     label { display: flex; flex-direction: column; font-size: 12px; font-weight: 600; gap: 4px; position: relative; }
     input, select, button { padding: 8px 10px; border-radius: 6px; border: 1px solid #8c959f; font-size: 13px; }
@@ -26,7 +27,17 @@
     button.secondary { background: #57606a; }
     button.success { background: #1a7f37; }
     button.small { padding: 5px 8px; font-size: 12px; }
-    .row-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .row-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; align-items: center; }
+    .live-pill {
+      display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px;
+      border-radius: 999px; font-size: 12px; font-weight: 700;
+      background: #dafbe1; color: #116329; border: 1px solid #4ac26b;
+    }
+    .live-pill.paused { background: #fff8c5; color: #7d4e00; border-color: #d4a72c; }
+    .minute-banner {
+      background: #eef6ff; border: 1px solid #54aeff; border-radius: 8px;
+      padding: 10px; margin-top: 10px; font-size: 12px; line-height: 1.65;
+    }
     .town-results {
       position: absolute; top: 100%; left: 0; right: 0; z-index: 30;
       background: #fff; border: 1px solid #1f6feb; border-radius: 6px;
@@ -77,7 +88,7 @@
 <body>
   <div class="app-header">
     <h1 class="app-title">தமிழ் ஜாதக &amp; பஞ்சாங்க செயலி</h1>
-    <span style="font-size:12px;color:#57606a;">5 Tabs • Mandhi • Panchangam • Balangal • PDF</span>
+    <span style="font-size:12px;color:#57606a;">5 Tabs • Live Minute Panchangam • Gowri • Hora • PDF</span>
   </div>
 
   <div class="tab-bar" role="tablist">
@@ -88,28 +99,35 @@
     <button class="tab-btn" data-tab="tab-saved" type="button" onclick="switchTab('tab-saved')">5. சேமித்தவை</button>
   </div>
 
-  <!-- TAB 1: PANCHANGAM + TAMIL CALENDAR -->
+  <!-- TAB 1: LIVE MINUTE PANCHANGAM + TAMIL CALENDAR + GOWRI + HORA -->
   <section id="tab-panchangam" class="tab-panel active">
     <div class="card">
-      <h3>தினசரி பஞ்சாங்கம் &amp; தமிழ் நாட்காட்டி</h3>
+      <h3>நிமிடத் துல்லிய பஞ்சாங்கம், கௌரி பஞ்சாங்கம் &amp; ஹோரை கடிகாரம்</h3>
       <div class="grid-form">
-        <label>நாள் (Date) <input id="panDateInput" type="date" value="2026-11-23" /></label>
+        <label>நாள் (Date) <input id="panDateInput" type="date" value="2026-11-24" /></label>
+        <label>கணிப்பு நேரம் (IST HH:MM) <input id="panTimeInput" type="time" step="60" value="06:33" /></label>
         <label>ஊர் (Place) <input id="panPlaceInput" type="text" value="Virudhunagar, Tamil Nadu" /></label>
         <label>Latitude <input id="panLatInput" type="number" step="0.0001" value="9.5851" /></label>
         <label>Longitude <input id="panLonInput" type="number" step="0.0001" value="77.9579" /></label>
       </div>
       <div class="row-actions">
-        <button id="calcPanBtn" type="button">பஞ்சாங்கம் பார் (View Panchangam)</button>
-        <button id="todayPanBtn" class="secondary" type="button">இன்று (Today)</button>
+        <button id="calcPanBtn" type="button">இந்த நிமிடம் கணி (Calc at Time)</button>
+        <button id="nowPanBtn" class="success" type="button">இப்போதைய நிமிடம் (Now)</button>
+        <button id="toggleLivePanBtn" class="secondary" type="button">Live Auto-Tick: ON</button>
         <button id="syncPlacePanBtn" class="secondary" type="button">பிறப்பு ஊர் எடு</button>
+        <span id="livePanBadge" class="live-pill">● Live Minute Sync Active</span>
       </div>
     </div>
+
     <div class="card">
-      <h3>தமிழ் தேதி &amp; பஞ்சாங்க விவரம் (சூரிய உதய அடிப்படையில்)</h3>
+      <h3>பஞ்ச அங்கம் (அந்த நிமிடத்தின் நிலை) &amp; தின விவரம்</h3>
       <div id="panchangSummary">Calculating...</div>
+      <div id="minuteSnapshotBox" class="minute-banner">Calculating exact minute Panchangam...</div>
       <div id="panchangTableWrap" class="table-wrap"></div>
+      <div id="gowriWrap" class="table-wrap"></div>
+      <div id="horaWrap" class="table-wrap"></div>
       <div class="mini-box">
-        <strong>குறிப்பு:</strong> தினசரி பஞ்சாங்கம் மற்றும் தமிழ் தேதி சூரிய உதய நேரத்தை அடிப்படையாகக் கொண்டு கணிக்கப்படுகின்றன. துல்லியமான சங்கராந்தி நிமிடங்கள் மற்றும் திருவிழா விவரங்களுக்கு அதிகாரப்பூர்வ திருக்கணித / வாக்கிய பஞ்சாங்கம் அல்லது Drik Panchang உடன் ஒப்பிடவும்.
+        <strong>குறிப்பு:</strong> கணிப்பு நேரத்தை (HH:MM) மாற்றும்போது அல்லது Live Auto-Tick இயங்கும் போது சூரியன் மற்றும் சந்திரனின் துல்லிய பாகை அடிப்படையில் <strong>நட்சத்திரம் &amp; பாதம்</strong>, <strong>திதி</strong>, <strong>யோகம்</strong>, <strong>கரணம்</strong>, அவற்றின் <strong>தொடக்க–முடிவு IST நேரங்கள்</strong>, <strong>கௌரி</strong> மற்றும் <strong>ஹோரை</strong> ஆகியவை உடனுக்குடன் மாறும்.
       </div>
     </div>
   </section>
@@ -136,7 +154,6 @@
         <label>Longitude <input id="lonInput" type="number" step="0.0001" value="77.9579" /></label>
       </div>
       <div id="birthTamilDateBar" class="mini-box" style="margin-top:8px;">தமிழ் தேதி: கணிக்கப்படுகிறது...</div>
-      <div id="testChartPreviewBar" class="mini-box" style="margin-top:6px;">சோதனை ஜாதகம் (Test Chart): கணிக்கப்படுகிறது...</div>
       <div id="townStatus" class="town-status">Place: Virudhunagar, Tamil Nadu (9.5851, 77.9579) • © OpenStreetMap contributors</div>
       <div class="row-actions">
         <button id="calcBtn" type="button">கணித்து சேமி (Calculate &amp; Save)</button>
@@ -149,7 +166,7 @@
 
     <div class="card">
       <h3>சூரிய உதயம் / அஸ்தமனம் &amp; முக்கிய நிலை</h3>
-      <div id="summaryBox">Calculating...</div>
+      <div id="summaryBox">பிறப்பு விவரங்களை உள்ளிட்டு <strong>கணித்து சேமி</strong> அல்லது <strong>Load Test Chart</strong> அழுத்தவும்.</div>
       <div class="charts-two-col">
         <div>
           <div style="font-size:12px;font-weight:700;color:#0969da;">ராசி கட்டம் (Rasi Chart)</div>
@@ -242,7 +259,7 @@
   </div>
 
   <script>
-    const STORAGE_KEY = "tamil_astro_5tab_v17_profiles";
+    const STORAGE_KEY = "tamil_astro_5tab_v20_limb_times";
     const DEG2RAD = Math.PI / 180;
     const RAD2DEG = 180 / Math.PI;
     const MS_PER_DAY = 86400000;
@@ -261,14 +278,35 @@
     const RASI_LORD_IDX = [2, 6, 3, 1, 0, 3, 6, 2, 4, 5, 5, 4];
     const GRAHA_TA = ["சூரியன்", "சந்திரன்", "செவ்வாய்", "புதன்", "குரு", "சுக்கிரன்", "சனி", "ராகு", "கேது"];
     const SEVEN_GRAHA_KEYS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"];
-    const SPECIAL_ASPECTS = {
-      Mars: [4, 7, 8],
-      Jupiter: [5, 7, 9],
-      Saturn: [3, 7, 10]
-    };
+    const SPECIAL_ASPECTS = { Mars: [4, 7, 8], Jupiter: [5, 7, 9], Saturn: [3, 7, 10] };
     const TITHI_TA = ["பிரதமை", "துவிதியை", "திருதியை", "சதுர்த்தி", "பஞ்சமி", "சஷ்டி", "சப்தமி", "அஷ்டமி", "நவமி", "தசமி", "ஏகாதசி", "த்வாதசி", "திரயோதசி", "சதுர்தசி", "பௌர்ணமி / அமாவாசை"];
     const KARANAM_TA = ["பவம்", "பாலவம்", "கௌலவம்", "தைதுலம்", "கரசை", "வணிசை", "பத்ரை", "சகுனி", "சதுஷ்பாதம்", "நாகவம்", "கிம்ஸ்துக்னம்"];
     const KARAKA_TA = ["ஆத்மகாரகன்", "அமாத்திய காரகன்", "பத்திரி காரகன்", "மாத்ரு காரகன்", "புத்ர காரகன்", "ஜனத்தி காரகன்", "தார காரகன்"];
+
+    const GOWRI_CYCLE = [
+      { key: "uththi", nameTa: "உத்தி", good: true, descTa: "முயற்சி / கல்வி / பணிக்கு நலம்" },
+      { key: "amirtham", nameTa: "அமிர்தம்", good: true, descTa: "மிகச் சிறந்தது / சுப காரியங்களுக்கு உகந்தது" },
+      { key: "rogam", nameTa: "ரோகம்", good: false, descTa: "தவிர்க்கவும் / உடல்நலம் & புதிய தொடக்கம் தவிர்ப்பு" },
+      { key: "labam", nameTa: "லாபம்", good: true, descTa: "வியாபாரம் / ஆதாயம் / பேச்சுவார்த்தைக்கு நலம்" },
+      { key: "dhanam", nameTa: "தனம்", good: true, descTa: "பொருளாதாரம் / பணப் பரிவர்த்தனைக்கு நலம்" },
+      { key: "sugam", nameTa: "சுகம்", good: true, descTa: "பயணம் / மகிழ்ச்சி / சுப செயல்களுக்கு நலம்" },
+      { key: "soram", nameTa: "சோரம்", good: false, descTa: "தவிர்க்கவும் / பொருள் & பண கவனம் தேவை" },
+      { key: "visham", nameTa: "விஷம்", good: false, descTa: "தவிர்க்கவும் / முக்கிய முடிவுகளை தள்ளிவைக்கவும்" }
+    ];
+    const GOWRI_DAY_START_IDX = [0, 1, 2, 3, 4, 5, 6];
+    const GOWRI_NIGHT_START_IDX = [4, 5, 6, 0, 1, 2, 3];
+
+    const HORA_WEEKDAY_START_IDX = [0, 1, 2, 3, 4, 5, 6];
+    const HORA_ORDER = [
+      { nameTa: "சூரியன்", shortTa: "சூரி", good: false, tipTa: "அதிகாரம், அரசு/நிர்வாகம்" },
+      { nameTa: "சுக்கிரன்", shortTa: "சுக்", good: true, tipTa: "கலை, பொருள், சுப காரியம்" },
+      { nameTa: "புதன்", shortTa: "புத", good: true, tipTa: "கல்வி, கணக்கு, வணிகம்" },
+      { nameTa: "சந்திரன்", shortTa: "சந்", good: true, tipTa: "பயணம், மக்கள் தொடர்பு" },
+      { nameTa: "சனி", shortTa: "சனி", good: false, tipTa: "கடின உழைப்பு, பொறுமை" },
+      { nameTa: "குரு", shortTa: "குரு", good: true, tipTa: "மிக நன்று, ஆலோசனை, சுபம்" },
+      { nameTa: "செவ்வாய்", shortTa: "செ", good: false, tipTa: "தைரியம், அவசரம் தவிர்க்கவும்" }
+    ];
+
     const LAGNA_NOTES = [
       { subar: "சூரி, குரு, செ", papar: "புத, சுக், சனி", samar: "சந்", yogam: "குரு", badhakam: "கும்பம் - சனி", marakam: "ரிஷபம், துலாம்", vainashika: 18 },
       { subar: "புத, சனி", papar: "குரு, செ, சந்", samar: "சூரி, சுக்", yogam: "சனி", badhakam: "மகரம் - சனி", marakam: "மேஷம், விருச்சிகம்", vainashika: 19 },
@@ -357,6 +395,8 @@
     let lastBhuktiList = [];
     let currentSelectedDashaIdx = 0;
     let currentSelectedBhuktiIdx = 0;
+    let livePanchangTimer = null;
+    let isLiveMinuteAuto = true;
 
     function switchTab(tabId) {
       document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === tabId));
@@ -389,6 +429,22 @@
     function formatIstClock(dateObj) {
       const ist = new Date(dateObj.getTime() + IST_OFFSET_MS);
       return `${String(ist.getUTCHours()).padStart(2, "0")}:${String(ist.getUTCMinutes()).padStart(2, "0")}:${String(ist.getUTCSeconds()).padStart(2, "0")}`;
+    }
+    function formatIstHHMM(dateObj) {
+      const ist = new Date(dateObj.getTime() + IST_OFFSET_MS);
+      return `${String(ist.getUTCHours()).padStart(2, "0")}:${String(ist.getUTCMinutes()).padStart(2, "0")}`;
+    }
+    function formatIstShortStamp(dateObj) {
+      const ist = new Date(dateObj.getTime() + IST_OFFSET_MS);
+      const dd = String(ist.getUTCDate()).padStart(2, "0");
+      const mm = String(ist.getUTCMonth() + 1).padStart(2, "0");
+      const hh = String(ist.getUTCHours()).padStart(2, "0");
+      const min = String(ist.getUTCMinutes()).padStart(2, "0");
+      return `${dd}/${mm} ${hh}:${min}`;
+    }
+    function formatIstDateYYYYMMDD(dateObj) {
+      const ist = new Date(dateObj.getTime() + IST_OFFSET_MS);
+      return `${ist.getUTCFullYear()}-${String(ist.getUTCMonth() + 1).padStart(2, "0")}-${String(ist.getUTCDate()).padStart(2, "0")}`;
     }
     function getIstMidnightUtcMs(year, month, day) {
       return Date.UTC(year, month - 1, day, 0, 0, 0) - IST_OFFSET_MS;
@@ -567,6 +623,173 @@
         indhuLagnaTa: RASI_TA[indhuLagnaIdx]
       };
     }
+    function evalLimbAngleAtMs(utcMs, mode, spanDeg) {
+      const jd = (utcMs / MS_PER_DAY) + 2440587.5;
+      const ayan = getLahiriAyanamsa(jd);
+      const trop = computeTropicalLongitudes(jd);
+      const sunSid = mod360(trop.Sun - ayan);
+      const moonSid = mod360(trop.Moon - ayan);
+      let angleDeg = 0;
+      if (mode === "tithi" || mode === "karana") {
+        angleDeg = mod360(moonSid - sunSid);
+      } else if (mode === "nakshatra") {
+        angleDeg = moonSid;
+      } else if (mode === "yoga") {
+        angleDeg = mod360(sunSid + moonSid);
+      }
+      const slotIndex = Math.floor(angleDeg / spanDeg);
+      const progress = (angleDeg % spanDeg) / spanDeg;
+      return { angleDeg, slotIndex, progress };
+    }
+    function findLimbBoundaryMs(refMs, mode, spanDeg, initialSlot, direction) {
+      const stepMs = 30 * 60 * 1000;
+      const maxSteps = 96;
+      let prevMs = refMs;
+      for (let s = 1; s <= maxSteps; s++) {
+        const curMs = refMs + direction * s * stepMs;
+        const st = evalLimbAngleAtMs(curMs, mode, spanDeg);
+        if (st.slotIndex !== initialSlot) {
+          let lo = direction > 0 ? prevMs : curMs;
+          let hi = direction > 0 ? curMs : prevMs;
+          for (let iter = 0; iter < 24; iter++) {
+            const mid = (lo + hi) / 2;
+            const midSt = evalLimbAngleAtMs(mid, mode, spanDeg);
+            if (midSt.slotIndex === initialSlot) {
+              if (direction > 0) lo = mid;
+              else hi = mid;
+            } else {
+              if (direction > 0) hi = mid;
+              else lo = mid;
+            }
+          }
+          return direction > 0 ? hi : lo;
+        }
+        prevMs = curMs;
+      }
+      return null;
+    }
+    function formatBoundaryWindow(startMs, endMs) {
+      const sTxt = startMs ? formatIstShortStamp(new Date(startMs)) : "—";
+      const eTxt = endMs ? formatIstShortStamp(new Date(endMs)) : "—";
+      return `${sTxt} → ${eTxt} IST`;
+    }
+    function computeMinutePanchangSnapshot(dateStr, timeHHMM, lat, lon, sunriseDate, sunsetDate) {
+      const [year, month, day] = dateStr.split("-").map(Number);
+      const [hh, mm] = (timeHHMM || "00:00").split(":").map(Number);
+      const safeH = Number.isFinite(hh) ? hh : 0;
+      const safeM = Number.isFinite(mm) ? mm : 0;
+
+      const targetUtcMs = Date.UTC(year, month - 1, day, safeH, safeM, 0) - IST_OFFSET_MS;
+      const jd = (targetUtcMs / MS_PER_DAY) + 2440587.5;
+      const ayanamsa = getLahiriAyanamsa(jd);
+      const trop = computeTropicalLongitudes(jd);
+      const sunSid = mod360(trop.Sun - ayanamsa);
+      const moonSid = mod360(trop.Moon - ayanamsa);
+      const moonDesc = describeLon(moonSid);
+      const sunDesc = describeLon(sunSid);
+
+      const nakSpan = 360 / 27;
+      const tithiState = evalLimbAngleAtMs(targetUtcMs, "tithi", 12);
+      const tithiNum = tithiState.slotIndex + 1;
+      const paksha = tithiNum <= 15 ? "சுக்ல பட்சம்" : "கிருஷ்ண பட்சம்";
+      const tithiIdx = (tithiNum - 1) % 15;
+      const tithiPct = (tithiState.progress * 100).toFixed(1);
+      const tithiStartMs = findLimbBoundaryMs(targetUtcMs, "tithi", 12, tithiState.slotIndex, -1);
+      const tithiEndMs = findLimbBoundaryMs(targetUtcMs, "tithi", 12, tithiState.slotIndex, 1);
+      const tithiWindowStr = formatBoundaryWindow(tithiStartMs, tithiEndMs);
+
+      const nakState = evalLimbAngleAtMs(targetUtcMs, "nakshatra", nakSpan);
+      const nakPct = (nakState.progress * 100).toFixed(1);
+      const nakStartMs = findLimbBoundaryMs(targetUtcMs, "nakshatra", nakSpan, nakState.slotIndex, -1);
+      const nakEndMs = findLimbBoundaryMs(targetUtcMs, "nakshatra", nakSpan, nakState.slotIndex, 1);
+      const nakWindowStr = formatBoundaryWindow(nakStartMs, nakEndMs);
+
+      const yogaState = evalLimbAngleAtMs(targetUtcMs, "yoga", nakSpan);
+      const yogamIdx = yogaState.slotIndex % 27;
+      const yogaPct = (yogaState.progress * 100).toFixed(1);
+      const yogaStartMs = findLimbBoundaryMs(targetUtcMs, "yoga", nakSpan, yogaState.slotIndex, -1);
+      const yogaEndMs = findLimbBoundaryMs(targetUtcMs, "yoga", nakSpan, yogaState.slotIndex, 1);
+      const yogaWindowStr = formatBoundaryWindow(yogaStartMs, yogaEndMs);
+
+      const karanaState = evalLimbAngleAtMs(targetUtcMs, "karana", 6);
+      const karanamHalf = karanaState.slotIndex;
+      const karanamIdx = karanamHalf === 0 ? 10 : karanamHalf >= 57 ? Math.min(9, karanamHalf - 54) : (karanamHalf - 1) % 7;
+      const karanaStartMs = findLimbBoundaryMs(targetUtcMs, "karana", 6, karanaState.slotIndex, -1);
+      const karanaEndMs = findLimbBoundaryMs(targetUtcMs, "karana", 6, karanaState.slotIndex, 1);
+      const karanaWindowStr = formatBoundaryWindow(karanaStartMs, karanaEndMs);
+
+      const weekday = new Date(getIstMidnightUtcMs(year, month, day) + 12 * 3600 * 1000 + IST_OFFSET_MS).getUTCDay();
+      const nextDate = new Date(Date.UTC(year, month - 1, day + 1));
+      const nextSun = calcSunriseSunsetIST(nextDate.getUTCFullYear(), nextDate.getUTCMonth() + 1, nextDate.getUTCDate(), lat, lon);
+
+      const riseMs = sunriseDate ? sunriseDate.getTime() : getIstMidnightUtcMs(year, month, day) + 6 * 3600 * 1000;
+      const setMs = sunsetDate ? sunsetDate.getTime() : riseMs + 12 * 3600 * 1000;
+      const nextRiseMs = nextSun.sunriseDate ? nextSun.sunriseDate.getTime() : riseMs + MS_PER_DAY;
+      const daySpanMs = setMs - riseMs;
+      const nightSpanMs = nextRiseMs - setMs;
+
+      let activeGowriLabel = "இரவு கௌரி";
+      let activeGowriItem = GOWRI_CYCLE[0];
+      let activeGowriRange = "";
+      let activeHoraLabel = "ஹோரை";
+      let activeHoraItem = HORA_ORDER[0];
+      let activeHoraRange = "";
+
+      const horaStart = HORA_WEEKDAY_START_IDX[weekday];
+      if (targetUtcMs >= riseMs && targetUtcMs < setMs) {
+        const gIdx = Math.min(7, Math.max(0, Math.floor(((targetUtcMs - riseMs) / daySpanMs) * 8)));
+        const gStart = riseMs + gIdx * (daySpanMs / 8);
+        const gEnd = riseMs + (gIdx + 1) * (daySpanMs / 8);
+        activeGowriItem = GOWRI_CYCLE[(GOWRI_DAY_START_IDX[weekday] + gIdx) % 8];
+        activeGowriLabel = `பகல் கௌரி #${gIdx + 1}`;
+        activeGowriRange = `${formatIstClock(new Date(gStart))} – ${formatIstClock(new Date(gEnd))}`;
+
+        const hIdx = Math.min(11, Math.max(0, Math.floor(((targetUtcMs - riseMs) / daySpanMs) * 12)));
+        const hStart = riseMs + hIdx * (daySpanMs / 12);
+        const hEnd = riseMs + (hIdx + 1) * (daySpanMs / 12);
+        activeHoraItem = HORA_ORDER[(horaStart + hIdx) % 7];
+        activeHoraLabel = `பகல் ஹோரை #${hIdx + 1}`;
+        activeHoraRange = `${formatIstClock(new Date(hStart))} – ${formatIstClock(new Date(hEnd))}`;
+      } else {
+        const nStartRef = targetUtcMs >= setMs ? setMs : (riseMs - 12 * 3600 * 1000);
+        const nSpanRef = targetUtcMs >= setMs ? nightSpanMs : (riseMs - nStartRef);
+        const gIdx = Math.min(7, Math.max(0, Math.floor(((targetUtcMs - nStartRef) / nSpanRef) * 8)));
+        const gStart = nStartRef + gIdx * (nSpanRef / 8);
+        const gEnd = nStartRef + (gIdx + 1) * (nSpanRef / 8);
+        activeGowriItem = GOWRI_CYCLE[(GOWRI_NIGHT_START_IDX[weekday] + gIdx) % 8];
+        activeGowriLabel = `இரவு கௌரி #${gIdx + 1}`;
+        activeGowriRange = `${formatIstClock(new Date(gStart))} – ${formatIstClock(new Date(gEnd))}`;
+
+        const hIdx = Math.min(11, Math.max(0, Math.floor(((targetUtcMs - nStartRef) / nSpanRef) * 12)));
+        const hStart = nStartRef + hIdx * (nSpanRef / 12);
+        const hEnd = nStartRef + (hIdx + 1) * (nSpanRef / 12);
+        activeHoraItem = HORA_ORDER[(horaStart + 12 + hIdx) % 7];
+        activeHoraLabel = `இரவு ஹோரை #${hIdx + 13}`;
+        activeHoraRange = `${formatIstClock(new Date(hStart))} – ${formatIstClock(new Date(hEnd))}`;
+      }
+
+      return {
+        targetUtcMs,
+        clockLabel: `${String(safeH).padStart(2, "0")}:${String(safeM).padStart(2, "0")} IST`,
+        weekdayTa: TAMIL_DAYS_TA[weekday],
+        tithiStr: `${TITHI_TA[tithiIdx]} (${paksha}) • ${tithiPct}%`,
+        tithiWindowStr,
+        nakStr: `${NAKSHATRA_TA[moonDesc.nakIdx]} (${moonDesc.pada}ம் பாதம்) • ${nakPct}%`,
+        nakWindowStr,
+        yogaStr: `${NAKSHATRA_TA[yogamIdx]} • ${yogaPct}%`,
+        yogaWindowStr,
+        karanamStr: KARANAM_TA[karanamIdx],
+        karanaWindowStr,
+        sunRasiStr: `${RASI_TA[sunDesc.rasiIdx]} (${sunDesc.degInRasi.toFixed(2)}°)`,
+        moonRasiStr: `${RASI_TA[moonDesc.rasiIdx]} (${moonDesc.degInRasi.toFixed(2)}°)`,
+        activeGowriLabel,
+        activeGowriItem,
+        activeGowriRange,
+        activeHoraLabel,
+        activeHoraItem,
+        activeHoraRange
+      };
+    }
     function computeJaiminiKarakas(placements) {
       const sevenSet = new Set(SEVEN_GRAHA_KEYS);
       return placements
@@ -679,8 +902,8 @@
       document.getElementById("lonInput").value = record.lon;
       updateBirthTamilDateBar();
     }
-    function testBirthChartPreview() {
-      sampleTestRecord = computeAstroData({
+    function createTestChartRecord() {
+      return computeAstroData({
         name: "Test Sample",
         gender: "ஆண்",
         dateStr: "1995-06-15",
@@ -689,14 +912,9 @@
         lon: 78.1198,
         placeName: "Madurai, Tamil Nadu"
       });
-      document.getElementById("testChartPreviewBar").innerHTML =
-        `<strong>சோதனை ஜாதகம் (Test Chart):</strong> ${sampleTestRecord.dateStr} ${sampleTestRecord.timeStr} (Madurai) → ` +
-        `லக்னம்: <strong>${RASI_TA[sampleTestRecord.lagnaIdx]}</strong> | ராசி: <strong>${RASI_TA[sampleTestRecord.rasiIdx]}</strong> | ` +
-        `நட்சத்திரம்: <strong>${NAKSHATRA_TA[sampleTestRecord.nakIdx]}</strong> (${sampleTestRecord.pada}ம் பாதம்) | தமிழ் தேதி: <strong>${sampleTestRecord.tamilCalendar.fullText}</strong>`;
     }
     function loadTestChartIntoForm() {
-      if (!sampleTestRecord) testBirthChartPreview();
-      syncFormToRecord(sampleTestRecord);
+      sampleTestRecord = createTestChartRecord();
       renderChartTab(sampleTestRecord);
     }
     function updateBirthTamilDateBar() {
@@ -711,8 +929,87 @@
       document.getElementById("birthTamilDateBar").innerHTML =
         `ஆங்கில தேதி: <strong>${dateStr}</strong> → தமிழ் தேதி (உதய அடிப்படையில்): <strong>${tc.fullText}</strong>`;
     }
+    function buildGowriAndHoraHtml(dateStr, lat, lon, sunriseDate, sunsetDate, targetUtcMs) {
+      const [year, month, day] = dateStr.split("-").map(Number);
+      const weekday = new Date(getIstMidnightUtcMs(year, month, day) + 12 * 3600 * 1000 + IST_OFFSET_MS).getUTCDay();
+      const refMs = typeof targetUtcMs === "number" ? targetUtcMs : Date.now();
+
+      const nextDate = new Date(Date.UTC(year, month - 1, day + 1));
+      const nextSun = calcSunriseSunsetIST(nextDate.getUTCFullYear(), nextDate.getUTCMonth() + 1, nextDate.getUTCDate(), lat, lon);
+
+      const riseMs = sunriseDate ? sunriseDate.getTime() : getIstMidnightUtcMs(year, month, day) + 6 * 3600 * 1000;
+      const setMs = sunsetDate ? sunsetDate.getTime() : riseMs + 12 * 3600 * 1000;
+      const nextRiseMs = nextSun.sunriseDate ? nextSun.sunriseDate.getTime() : riseMs + MS_PER_DAY;
+
+      const daySpanMs = setMs - riseMs;
+      const nightSpanMs = nextRiseMs - setMs;
+
+      const gowriDayStart = GOWRI_DAY_START_IDX[weekday];
+      const gowriNightStart = GOWRI_NIGHT_START_IDX[weekday];
+      const gowriRows = [];
+      for (let i = 0; i < 8; i++) {
+        const dStart = riseMs + i * (daySpanMs / 8);
+        const dEnd = riseMs + (i + 1) * (daySpanMs / 8);
+        const dItem = GOWRI_CYCLE[(gowriDayStart + i) % 8];
+        const dLive = refMs >= dStart && refMs < dEnd;
+
+        const nStart = setMs + i * (nightSpanMs / 8);
+        const nEnd = setMs + (i + 1) * (nightSpanMs / 8);
+        const nItem = GOWRI_CYCLE[(gowriNightStart + i) % 8];
+        const nLive = refMs >= nStart && refMs < nEnd;
+
+        gowriRows.push(`
+          <tr>
+            <td>${i + 1}</td>
+            <td class="${dLive ? "active-period" : ""}"><span class="${dItem.good ? "badge-ok" : "badge-no"}">${dItem.nameTa}</span>${dLive ? '<span class="badge-live">இந்த நிமிடம்</span>' : ""}<br/><span style="font-size:11px;color:#57606a;">${formatIstClock(new Date(dStart))} – ${formatIstClock(new Date(dEnd))}</span></td>
+            <td class="${nLive ? "active-period" : ""}"><span class="${nItem.good ? "badge-ok" : "badge-no"}">${nItem.nameTa}</span>${nLive ? '<span class="badge-live">இந்த நிமிடம்</span>' : ""}<br/><span style="font-size:11px;color:#57606a;">${formatIstClock(new Date(nStart))} – ${formatIstClock(new Date(nEnd))}</span></td>
+          </tr>
+        `);
+      }
+
+      const horaStart = HORA_WEEKDAY_START_IDX[weekday];
+      const horaRows = [];
+      for (let i = 0; i < 12; i++) {
+        const dStart = riseMs + i * (daySpanMs / 12);
+        const dEnd = riseMs + (i + 1) * (daySpanMs / 12);
+        const dHora = HORA_ORDER[(horaStart + i) % 7];
+        const dLive = refMs >= dStart && refMs < dEnd;
+
+        const nStart = setMs + i * (nightSpanMs / 12);
+        const nEnd = setMs + (i + 1) * (nightSpanMs / 12);
+        const nHora = HORA_ORDER[(horaStart + 12 + i) % 7];
+        const nLive = refMs >= nStart && refMs < nEnd;
+
+        horaRows.push(`
+          <tr>
+            <td>${i + 1} / ${i + 13}</td>
+            <td class="${dLive ? "active-period" : ""}"><span class="${dHora.good ? "badge-ok" : "badge-warn"}">${dHora.nameTa} ஹோரை</span>${dLive ? '<span class="badge-live">இந்த நிமிடம்</span>' : ""}<br/><span style="font-size:11px;color:#57606a;">${formatIstClock(new Date(dStart))} – ${formatIstClock(new Date(dEnd))} • ${dHora.tipTa}</span></td>
+            <td class="${nLive ? "active-period" : ""}"><span class="${nHora.good ? "badge-ok" : "badge-warn"}">${nHora.nameTa} ஹோரை</span>${nLive ? '<span class="badge-live">இந்த நிமிடம்</span>' : ""}<br/><span style="font-size:11px;color:#57606a;">${formatIstClock(new Date(nStart))} – ${formatIstClock(new Date(nEnd))} • ${nHora.tipTa}</span></td>
+          </tr>
+        `);
+      }
+
+      const gowriHtml = `
+        <h4>கௌரி பஞ்சாங்கம் (Gowri Panchangam — பகல் &amp; இரவு)</h4>
+        <table class="data-table">
+          <thead><tr><th>பகுதி</th><th>பகல் கௌரி (உதயம் → அஸ்தமனம்)</th><th>இரவு கௌரி (அஸ்தமனம் → மறுநாள் உதயம்)</th></tr></thead>
+          <tbody>${gowriRows.join("")}</tbody>
+        </table>
+      `;
+
+      const horaHtml = `
+        <h4>ஹோரை கடிகாரம் (Planetary Hora Watch — 24 ஹோரைகள்)</h4>
+        <table class="data-table">
+          <thead><tr><th>எண்</th><th>பகல் ஹோரை (1–12)</th><th>இரவு ஹோரை (13–24)</th></tr></thead>
+          <tbody>${horaRows.join("")}</tbody>
+        </table>
+      `;
+
+      return { gowriHtml, horaHtml };
+    }
     function renderPanchangamTab() {
-      const dateStr = document.getElementById("panDateInput").value || "2026-11-23";
+      const dateStr = document.getElementById("panDateInput").value || "2026-11-24";
+      const timeHHMM = document.getElementById("panTimeInput").value || "06:33";
       const placeName = document.getElementById("panPlaceInput").value.trim() || "Virudhunagar, Tamil Nadu";
       const lat = parseFloat(document.getElementById("panLatInput").value) || 9.5851;
       const lon = parseFloat(document.getElementById("panLonInput").value) || 77.9579;
@@ -721,24 +1018,58 @@
       const sunriseClockStr = sun.sunriseDate ? formatIstClock(sun.sunriseDate) : "06:15:00";
       const rec = computeAstroData({ name: "Panchangam", gender: "ஆண்", dateStr, timeStr: sunriseClockStr, lat, lon, placeName });
       const tc = rec.tamilCalendar;
+      const snap = computeMinutePanchangSnapshot(dateStr, timeHHMM, lat, lon, sun.sunriseDate, sun.sunsetDate);
       const weekday = new Date(getIstMidnightUtcMs(year, month, day) + 12 * 3600 * 1000 + IST_OFFSET_MS).getUTCDay();
       const rahuSlot = [8, 2, 7, 5, 6, 4, 3][weekday], yamaSlot = [5, 4, 3, 2, 1, 7, 6][weekday], kuliSlot = [7, 6, 5, 4, 3, 2, 1][weekday];
       const partMs = rec.sunriseMs && rec.sunsetMs && rec.sunsetMs > rec.sunriseMs ? (rec.sunsetMs - rec.sunriseMs) / 8 : null;
       const slotRange = (slot) => partMs ? `${formatIstClock(new Date(rec.sunriseMs + (slot - 1) * partMs))} – ${formatIstClock(new Date(rec.sunriseMs + slot * partMs))}` : "N/A";
+
       document.getElementById("panchangSummary").innerHTML =
         `<strong>${placeName}</strong> • ஆங்கில தேதி: <strong>${dateStr}</strong> | தமிழ் தேதி: <strong>${tc.fullText}</strong><br/>` +
         `சூரிய உதயம்: <strong>${rec.sunriseStr}</strong> | அஸ்தமனம்: <strong>${rec.sunsetStr}</strong>`;
-      document.getElementById("panchangTableWrap").innerHTML = `<table class="data-table"><thead><tr><th>பஞ்சாங்க அம்சம்</th><th>விவரம்</th></tr></thead><tbody>
-        <tr><td><strong>தமிழ் மாதம் &amp; நாள்</strong></td><td>${tc.monthTa} ${tc.dayNum} (${tc.weekdayTa})</td></tr>
-        <tr><td><strong>திதி / பட்சம்</strong></td><td>${rec.panchang.tithiStr}</td></tr>
-        <tr><td><strong>நட்சத்திரம் / பாதம்</strong></td><td>${NAKSHATRA_TA[rec.nakIdx]} (${rec.pada}ம் பாதம்)</td></tr>
-        <tr><td><strong>யோகம்</strong></td><td>${rec.panchang.yogamStr}</td></tr>
-        <tr><td><strong>கரணம்</strong></td><td>${rec.panchang.karanamStr}</td></tr>
-        <tr><td><strong>அயனம்</strong></td><td>${rec.panchang.ayanam}</td></tr>
-        <tr><td><strong>ராகு காலம்</strong></td><td>${slotRange(rahuSlot)}</td></tr>
-        <tr><td><strong>எமகண்டம்</strong></td><td>${slotRange(yamaSlot)}</td></tr>
-        <tr><td><strong>குளிகை</strong></td><td>${slotRange(kuliSlot)}</td></tr>
+
+      document.getElementById("minuteSnapshotBox").innerHTML =
+        `<div style="font-size:13px;font-weight:700;color:#0550ae;margin-bottom:4px;">⏱ நிமிடத் துல்லிய பஞ்ச அங்கம் — ${dateStr} @ ${snap.clockLabel} (${snap.weekdayTa})</div>` +
+        `<div>• <strong>நட்சத்திரம் &amp; பாதம்:</strong> <strong>${snap.nakStr}</strong> <span style="color:#57606a;">[${snap.nakWindowStr}]</span></div>` +
+        `<div>• <strong>திதி &amp; பட்சம்:</strong> <strong>${snap.tithiStr}</strong> <span style="color:#57606a;">[${snap.tithiWindowStr}]</span></div>` +
+        `<div>• <strong>யோகம் &amp; கரணம்:</strong> யோகம்: <strong>${snap.yogaStr}</strong> <span style="color:#57606a;">[${snap.yogaWindowStr}]</span> | கரணம்: <strong>${snap.karanamStr}</strong> <span style="color:#57606a;">[${snap.karanaWindowStr}]</span></div>` +
+        `<div>• <strong>சூரியன் / சந்திரன் ராசி:</strong> சூரியன்: <strong>${snap.sunRasiStr}</strong> | சந்திரன்: <strong>${snap.moonRasiStr}</strong></div>` +
+        `<div>• <strong>கௌரி &amp; ஹோரை (அந்த நிமிடம்):</strong> ` +
+        `<span class="${snap.activeGowriItem.good ? "badge-ok" : "badge-no"}">${snap.activeGowriLabel}: ${snap.activeGowriItem.nameTa}</span> (${snap.activeGowriRange}) • ` +
+        `<span class="${snap.activeHoraItem.good ? "badge-ok" : "badge-warn"}">${snap.activeHoraLabel}: ${snap.activeHoraItem.nameTa} ஹோரை</span> (${snap.activeHoraRange})</div>`;
+
+      document.getElementById("panchangTableWrap").innerHTML = `<table class="data-table"><thead><tr><th>பஞ்சாங்க அம்சம்</th><th>அந்த நிமிட நிலை</th><th>தொடக்கம் → முடிவு (IST)</th></tr></thead><tbody>
+        <tr><td><strong>1. வாரம் (கிழமை)</strong></td><td>${snap.weekdayTa}</td><td>தினசரி</td></tr>
+        <tr><td><strong>2. திதி &amp; பட்சம்</strong></td><td>${snap.tithiStr}</td><td>${snap.tithiWindowStr}</td></tr>
+        <tr><td><strong>3. நட்சத்திரம் &amp; பாதம்</strong></td><td>${snap.nakStr}</td><td>${snap.nakWindowStr}</td></tr>
+        <tr><td><strong>4. யோகம்</strong></td><td>${snap.yogaStr}</td><td>${snap.yogaWindowStr}</td></tr>
+        <tr><td><strong>5. கரணம்</strong></td><td>${snap.karanamStr}</td><td>${snap.karanaWindowStr}</td></tr>
+        <tr><td><strong>தமிழ் மாதம் &amp; நாள்</strong></td><td>${tc.monthTa} ${tc.dayNum} (${tc.weekdayTa})</td><td>சூரிய உதய அடிப்படையில்</td></tr>
+        <tr><td><strong>அயனம்</strong></td><td>${rec.panchang.ayanam}</td><td>சூரிய பாகை அடிப்படையில்</td></tr>
+        <tr><td><strong>ராகு காலம்</strong></td><td>${slotRange(rahuSlot)}</td><td>${snap.weekdayTa}</td></tr>
+        <tr><td><strong>எமகண்டம்</strong></td><td>${slotRange(yamaSlot)}</td><td>${snap.weekdayTa}</td></tr>
+        <tr><td><strong>குளிகை</strong></td><td>${slotRange(kuliSlot)}</td><td>${snap.weekdayTa}</td></tr>
       </tbody></table>`;
+
+      const { gowriHtml, horaHtml } = buildGowriAndHoraHtml(dateStr, lat, lon, sun.sunriseDate, sun.sunsetDate, snap.targetUtcMs);
+      document.getElementById("gowriWrap").innerHTML = gowriHtml;
+      document.getElementById("horaWrap").innerHTML = horaHtml;
+    }
+    function setPanInputsToNowAndRender() {
+      const nowObj = new Date();
+      document.getElementById("panDateInput").value = formatIstDateYYYYMMDD(nowObj);
+      document.getElementById("panTimeInput").value = formatIstHHMM(nowObj);
+      renderPanchangamTab();
+    }
+    function startLiveMinuteTimer() {
+      if (livePanchangTimer) clearInterval(livePanchangTimer);
+      livePanchangTimer = setInterval(() => {
+        if (!isLiveMinuteAuto) return;
+        const activeTab = document.querySelector(".tab-btn.active")?.dataset.tab;
+        if (activeTab === "tab-panchangam") {
+          setPanInputsToNowAndRender();
+        }
+      }, 15000);
     }
     function buildSouthIndianGridInnerHtml(centerTitle, subText, placements, fieldKey) {
       const cells = [`<div class="si-box si-center"><div>${centerTitle}</div><div style="font-size:10px;font-weight:500;margin-top:2px;">${subText}</div></div>`];
@@ -894,7 +1225,7 @@
       balBox.innerHTML = buildFullTab3PredictionsHtml(latestRecord, targetMaha, targetBhukti, Date.now());
     }
     function openSrirangamSheet(record) {
-      if (!record) return;
+      if (!record) return alert("முதலில் ஒரு ஜாதகத்தை கணிக்கவும் அல்லது தேர்ந்தெடுக்கவும்.");
       const istDay = new Date(jdToIstDate(record.jd).getTime() + IST_OFFSET_MS);
       const tamilDays = ["ஞாயிறு கிழமை", "திங்கள் கிழமை", "செவ்வாய் கிழமை", "புதன் கிழமை", "வியாழன் கிழமை", "வெள்ளி கிழமை", "சனி கிழமை"];
       const dashaBal = getDashaBalanceInfo(record);
@@ -1030,6 +1361,10 @@
       const balBox = document.getElementById("dashaBalangalBox");
       if (!record) {
         if (balBox) { balBox.style.display = "none"; balBox.innerHTML = ""; }
+        document.getElementById("dashaSummary").innerHTML = "Calculate a chart in Tab 2 or click Load Test Chart first.";
+        document.getElementById("dashaTableWrap").innerHTML = "";
+        document.getElementById("bhuktiTableWrap").innerHTML = "";
+        document.getElementById("antardashaTableWrap").innerHTML = "";
         return;
       }
       const remRatio = 1 - Math.min(0.9999, Math.max(0, record.moonDegInNak / (360 / 27)));
@@ -1119,11 +1454,51 @@
     document.getElementById("latInput").addEventListener("change", updateBirthTamilDateBar);
     document.getElementById("lonInput").addEventListener("change", updateBirthTamilDateBar);
     document.getElementById("loadTestChartBtn").addEventListener("click", loadTestChartIntoForm);
-    document.getElementById("calcPanBtn").addEventListener("click", renderPanchangamTab);
-    document.getElementById("todayPanBtn").addEventListener("click", () => {
-      const nowIst = new Date(Date.now() + IST_OFFSET_MS);
-      document.getElementById("panDateInput").value = nowIst.toISOString().slice(0, 10);
+    document.getElementById("calcPanBtn").addEventListener("click", () => {
+      isLiveMinuteAuto = false;
+      const btn = document.getElementById("toggleLivePanBtn");
+      const badge = document.getElementById("livePanBadge");
+      btn.textContent = "Live Auto-Tick: OFF";
+      badge.textContent = "Manual Minute Mode";
+      badge.className = "live-pill paused";
       renderPanchangamTab();
+    });
+    document.getElementById("nowPanBtn").addEventListener("click", () => {
+      isLiveMinuteAuto = true;
+      const btn = document.getElementById("toggleLivePanBtn");
+      const badge = document.getElementById("livePanBadge");
+      btn.textContent = "Live Auto-Tick: ON";
+      badge.textContent = "● Live Minute Sync Active";
+      badge.className = "live-pill";
+      setPanInputsToNowAndRender();
+    });
+    document.getElementById("toggleLivePanBtn").addEventListener("click", () => {
+      isLiveMinuteAuto = !isLiveMinuteAuto;
+      const btn = document.getElementById("toggleLivePanBtn");
+      const badge = document.getElementById("livePanBadge");
+      if (isLiveMinuteAuto) {
+        btn.textContent = "Live Auto-Tick: ON";
+        badge.textContent = "● Live Minute Sync Active";
+        badge.className = "live-pill";
+        setPanInputsToNowAndRender();
+      } else {
+        btn.textContent = "Live Auto-Tick: OFF";
+        badge.textContent = "Manual Minute Mode";
+        badge.className = "live-pill paused";
+      }
+    });
+    ["panDateInput", "panTimeInput", "panPlaceInput", "panLatInput", "panLonInput"].forEach((id) => {
+      document.getElementById(id).addEventListener("input", () => {
+        if (id === "panTimeInput" || id === "panDateInput") {
+          isLiveMinuteAuto = false;
+          const btn = document.getElementById("toggleLivePanBtn");
+          const badge = document.getElementById("livePanBadge");
+          btn.textContent = "Live Auto-Tick: OFF";
+          badge.textContent = "Manual Minute Mode";
+          badge.className = "live-pill paused";
+        }
+        renderPanchangamTab();
+      });
     });
     document.getElementById("syncPlacePanBtn").addEventListener("click", () => {
       document.getElementById("panPlaceInput").value = document.getElementById("townSearchInput").value;
@@ -1160,10 +1535,9 @@
 
     initSelectors();
     renderSavedList(loadProfiles());
-    testBirthChartPreview();
     updateBirthTamilDateBar();
-    renderPanchangamTab();
-    runCalculation(false);
+    setPanInputsToNowAndRender();
+    startLiveMinuteTimer();
     runPoruthamCheck();
   </script>
 
